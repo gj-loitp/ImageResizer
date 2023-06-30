@@ -9,9 +9,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.tech.imageresizershrinker.utils.BitmapUtils.canShow
-import ru.tech.imageresizershrinker.utils.BitmapUtils.resizeBitmap
-import ru.tech.imageresizershrinker.utils.BitmapUtils.rotate
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.canShow
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.resizeBitmap
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.rotate
 
 class CompareViewModel : ViewModel() {
 
@@ -110,5 +110,23 @@ class CompareViewModel : ViewModel() {
             }
         }
     }
+
+    fun updateBitmapDataAsync(
+        loader: suspend () -> Pair<Bitmap?, Bitmap?>,
+        onError: () -> Unit,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val data = loader()
+                if (data.first == null || data.second == null) onError()
+                else {
+                    _bitmapData.value = data
+                    onSuccess()
+                }
+            }
+        }
+    }
+
 
 }

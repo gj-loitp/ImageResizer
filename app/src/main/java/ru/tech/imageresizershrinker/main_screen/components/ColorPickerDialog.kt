@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -24,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,11 +51,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -70,15 +73,14 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.blue
 import androidx.core.graphics.green
 import androidx.core.graphics.red
+import com.smarttoolfactory.colordetector.util.RGBUtil.alpha
 import com.t8rin.dynamic.theme.ColorTuple
 import com.t8rin.dynamic.theme.ColorTupleItem
 import com.t8rin.dynamic.theme.calculateSecondaryColor
@@ -88,44 +90,46 @@ import com.t8rin.dynamic.theme.getAppColorTuple
 import com.t8rin.dynamic.theme.rememberColorScheme
 import kotlinx.coroutines.delay
 import ru.tech.imageresizershrinker.R
-import ru.tech.imageresizershrinker.theme.CreateAlt
-import ru.tech.imageresizershrinker.theme.PaletteSwatch
 import ru.tech.imageresizershrinker.theme.defaultColorTuple
+import ru.tech.imageresizershrinker.theme.icons.CreateAlt
+import ru.tech.imageresizershrinker.theme.icons.PaletteSwatch
 import ru.tech.imageresizershrinker.theme.inverse
 import ru.tech.imageresizershrinker.theme.outlineVariant
-import ru.tech.imageresizershrinker.utils.ListUtils.nearestFor
+import ru.tech.imageresizershrinker.utils.helper.ListUtils.nearestFor
 import ru.tech.imageresizershrinker.utils.modifier.alertDialog
+import ru.tech.imageresizershrinker.widget.text.TitleItem
+import ru.tech.imageresizershrinker.widget.sheets.SimpleSheet
+import ru.tech.imageresizershrinker.widget.utils.LocalSettingsState
 
 @ExperimentalMaterial3Api
 @Composable
 fun ColorPickerDialog(
-    modifier: Modifier = Modifier,
+    visible: MutableState<Boolean>,
     colorTuple: ColorTuple,
-    borderWidth: Dp = LocalBorderWidth.current,
+    borderWidth: Dp = LocalSettingsState.current.borderWidth,
     title: String = stringResource(R.string.color_scheme),
-    onColorChange: (ColorTuple) -> Unit,
-    onDismissRequest: () -> Unit
+    onColorChange: (ColorTuple) -> Unit
 ) {
-    var primary by rememberSaveable { mutableStateOf(colorTuple.primary.toArgb()) }
-    var secondary by rememberSaveable {
-        mutableStateOf(
+    var primary by rememberSaveable(colorTuple) { mutableIntStateOf(colorTuple.primary.toArgb()) }
+    var secondary by rememberSaveable(colorTuple) {
+        mutableIntStateOf(
             colorTuple.secondary?.toArgb() ?: colorTuple.primary.calculateSecondaryColor()
         )
     }
-    var tertiary by rememberSaveable {
-        mutableStateOf(
+    var tertiary by rememberSaveable(colorTuple) {
+        mutableIntStateOf(
             colorTuple.tertiary?.toArgb() ?: colorTuple.primary.calculateTertiaryColor()
         )
     }
 
-    var surface by rememberSaveable {
-        mutableStateOf(
+    var surface by rememberSaveable(colorTuple) {
+        mutableIntStateOf(
             colorTuple.surface?.toArgb() ?: colorTuple.primary.calculateSurfaceColor()
         )
     }
 
     val appColorTuple = getAppColorTuple(
-        defaultColorTuple = LocalAppColorTuple.current,
+        defaultColorTuple = LocalSettingsState.current.appColorTuple,
         dynamicColor = true,
         darkTheme = true
     )
@@ -136,21 +140,21 @@ fun ColorPickerDialog(
         colorTuple = appColorTuple
     )
 
-    AlertDialog(
-        modifier = modifier,
-        onDismissRequest = {},
-        title = { Text(title) },
-        icon = { Icon(Icons.Outlined.Palette, null) },
-        text = {
+    SimpleSheet(
+        visible = visible,
+        title = { TitleItem(text = title, icon = Icons.Outlined.Palette, modifier = Modifier) },
+        endConfirmButtonPadding = 0.dp,
+        sheetContent = {
             Box {
                 Divider(
                     Modifier
                         .align(Alignment.TopCenter)
                         .zIndex(100f)
                 )
-
                 Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(Modifier.height(8.dp))
@@ -249,60 +253,92 @@ fun ColorPickerDialog(
                             Color(surface)
                         )
                     )
-                    onDismissRequest()
+                    visible.value = false
                 }
             ) {
-                Text(stringResource(R.string.ok))
+                Text(stringResource(R.string.save))
             }
         },
-        dismissButton = {
-            OutlinedButton(
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-                border = BorderStroke(
-                    borderWidth,
-                    MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer)
-                ),
-                onClick = onDismissRequest
-            ) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
     )
 }
 
 @OptIn(
-    ExperimentalLayoutApi::class, ExperimentalAnimationApi::class,
-    ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class
+    ExperimentalLayoutApi::class,
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class
 )
 @Composable
 fun AvailableColorTuplesDialog(
-    modifier: Modifier,
+    visible: MutableState<Boolean>,
     colorTupleList: List<ColorTuple>,
     currentColorTuple: ColorTuple,
-    borderWidth: Dp = LocalBorderWidth.current,
-    showColorPicker: MutableState<Boolean>,
+    openColorPicker: () -> Unit,
+    borderWidth: Dp = LocalSettingsState.current.borderWidth,
     colorPicker: @Composable (onUpdateColorTuples: (List<ColorTuple>) -> Unit) -> Unit,
     onPickTheme: (ColorTuple) -> Unit,
     onUpdateColorTuples: (List<ColorTuple>) -> Unit,
-    onDismissRequest: () -> Unit
 ) {
-    var showColorPicker1 by showColorPicker
-    var showEditColorPicker by rememberSaveable { mutableStateOf(false) }
+    val showEditColorPicker = rememberSaveable { mutableStateOf(false) }
 
-    AlertDialog(
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = modifier,
-        onDismissRequest = onDismissRequest,
-        icon = {
-            Icon(Icons.Rounded.PaletteSwatch, null)
-        },
+    SimpleSheet(
+        visible = visible,
+        endConfirmButtonPadding = 0.dp,
         title = {
-            Text(stringResource(R.string.color_scheme))
+            Row {
+                OutlinedButton(
+                    onClick = {
+                        if ((colorTupleList - currentColorTuple).isEmpty()) onPickTheme(
+                            defaultColorTuple
+                        )
+                        colorTupleList.nearestFor(currentColorTuple)?.let { onPickTheme(it) }
+                        onUpdateColorTuples(colorTupleList - currentColorTuple)
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                    border = BorderStroke(
+                        borderWidth,
+                        MaterialTheme.colorScheme.outlineVariant(
+                            onTopOf = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ),
+                ) {
+                    Icon(Icons.Rounded.Delete, null)
+                }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        showEditColorPicker.value = true
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                    border = BorderStroke(
+                        borderWidth,
+                        MaterialTheme.colorScheme.outlineVariant(
+                            onTopOf = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ),
+                ) {
+                    Icon(Icons.Rounded.CreateAlt, null)
+                }
+            }
         },
-        text = {
+        sheetContent = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceColorAtElevation(10.dp)),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                TitleItem(
+                    text = stringResource(R.string.color_scheme),
+                    icon = Icons.Rounded.PaletteSwatch
+                )
+            }
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Divider(
                     Modifier
@@ -313,7 +349,7 @@ fun AvailableColorTuplesDialog(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .verticalScroll(rememberScrollState())
-                        .padding(vertical = 8.dp, horizontal = 2.dp)
+                        .padding(vertical = 16.dp, horizontal = 2.dp)
                 ) {
                     colorTupleList.forEach { colorTuple ->
                         ColorTupleItem(
@@ -334,8 +370,8 @@ fun AvailableColorTuplesDialog(
                                     },
                                 ),
                             backgroundColor = rememberColorScheme(
-                                LocalNightMode.current.isNightMode(),
-                                LocalAmoledMode.current,
+                                LocalSettingsState.current.isNightMode,
+                                LocalSettingsState.current.isDynamicColors,
                                 colorTuple
                             ).surfaceVariant.copy(alpha = 0.8f)
                         ) {
@@ -391,9 +427,7 @@ fun AvailableColorTuplesDialog(
                                 MaterialTheme.shapes.medium
                             )
                             .clip(MaterialTheme.shapes.medium)
-                            .clickable {
-                                showColorPicker1 = true
-                            },
+                            .clickable { openColorPicker() },
                         backgroundColor = MaterialTheme
                             .colorScheme
                             .surfaceVariant
@@ -415,7 +449,9 @@ fun AvailableColorTuplesDialog(
         },
         confirmButton = {
             OutlinedButton(
-                onClick = onDismissRequest,
+                onClick = {
+                    visible.value = false
+                },
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -430,63 +466,20 @@ fun AvailableColorTuplesDialog(
                 Text(stringResource(R.string.close))
             }
         },
-        dismissButton = {
-            OutlinedButton(
-                onClick = {
-                    if ((colorTupleList - currentColorTuple).isEmpty()) onPickTheme(
-                        defaultColorTuple
-                    )
-                    colorTupleList.nearestFor(currentColorTuple)?.let { onPickTheme(it) }
-                    onUpdateColorTuples(colorTupleList - currentColorTuple)
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
-                border = BorderStroke(
-                    borderWidth,
-                    MaterialTheme.colorScheme.outlineVariant(
-                        onTopOf = MaterialTheme.colorScheme.errorContainer
-                    )
-                ),
-            ) {
-                Icon(Icons.Rounded.Delete, null)
-            }
-            OutlinedButton(
-                onClick = {
-                    showEditColorPicker = true
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-                border = BorderStroke(
-                    borderWidth,
-                    MaterialTheme.colorScheme.outlineVariant(
-                        onTopOf = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ),
-            ) {
-                Icon(Icons.Rounded.CreateAlt, null)
-            }
+    )
+    ColorPickerDialog(
+        visible = showEditColorPicker,
+        colorTuple = currentColorTuple,
+        onColorChange = {
+            onUpdateColorTuples(colorTupleList + it - currentColorTuple)
+            onPickTheme(it)
         }
     )
-    if (showEditColorPicker) {
-        ColorPickerDialog(
-            modifier = Modifier.alertDialog(),
-            colorTuple = currentColorTuple,
-            onDismissRequest = { showEditColorPicker = false },
-            onColorChange = {
-                onUpdateColorTuples(colorTupleList + it - currentColorTuple)
-                onPickTheme(it)
-            }
-        )
-    }
-    if (showColorPicker1) colorPicker(onUpdateColorTuples)
+    colorPicker(onUpdateColorTuples)
 }
 
 @Composable
-private fun ColorCustomComponent(
+fun ColorCustomComponent(
     color: Int,
     onColorChange: (Int) -> Unit,
 ) {
@@ -499,6 +492,70 @@ private fun ColorCustomComponent(
             color = color,
             onColorChange = onColorChange
         )
+    }
+}
+
+@Composable
+fun AlphaColorCustomComponent(
+    color: Int,
+    onColorChange: (Int, Int) -> Unit,
+) {
+    Column {
+        var alphaValue by remember(color) { mutableIntStateOf(color.alpha) }
+        ColorCustomInfoComponent(
+            color = color,
+            onColorChange = {
+                onColorChange(it, alphaValue)
+            },
+        )
+        ColorCustomControlComponent(
+            color = color,
+            onColorChange = { onColorChange(it, alphaValue) }
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.alpha),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            val settingsState = LocalSettingsState.current
+            Slider(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 16.dp, start = 12.dp, end = 12.dp, bottom = 8.dp)
+                    .offset(y = (-2).dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    )
+                    .height(40.dp)
+                    .border(
+                        width = settingsState.borderWidth,
+                        color = MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer),
+                        shape = CircleShape
+                    )
+                    .padding(horizontal = 10.dp),
+                colors = SliderDefaults.colors(
+                    inactiveTrackColor =
+                    MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer)
+                ),
+                valueRange = 0f..255f,
+                value = animateFloatAsState(targetValue = alphaValue.toFloat()).value,
+                onValueChange = {
+                    alphaValue = it.toInt()
+                    onColorChange(color, alphaValue)
+                },
+            )
+
+            Text(
+                modifier = Modifier.width(32.dp),
+                text = alphaValue.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.End,
+            )
+        }
     }
 }
 
@@ -533,11 +590,10 @@ fun getFormattedColor(color: Int): String =
     String.format("#%08X", (0xFFFFFFFF and color.toLong())).replace("#FF", "#")
 
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalTextApi::class)
 @Composable
 private fun ColorCustomInfoComponent(
     color: Int,
-    borderWidth: Dp = LocalBorderWidth.current,
+    borderWidth: Dp = LocalSettingsState.current.borderWidth,
     onColorChange: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -707,12 +763,12 @@ private fun ColorCustomControlComponent(
     color: Int,
     onColorChange: (Int) -> Unit
 ) {
-    val redValue = remember(color) { mutableStateOf(color.red) }
-    val greenValue = remember(color) { mutableStateOf(color.green) }
-    val blueValue = remember(color) { mutableStateOf(color.blue) }
+    val redValue = remember(color) { mutableIntStateOf(color.red) }
+    val greenValue = remember(color) { mutableIntStateOf(color.green) }
+    val blueValue = remember(color) { mutableIntStateOf(color.blue) }
 
-    val newColor by remember(redValue.value, greenValue.value, blueValue.value) {
-        mutableStateOf(Color(redValue.value, greenValue.value, blueValue.value))
+    val newColor by remember(redValue.intValue, greenValue.intValue, blueValue.intValue) {
+        mutableStateOf(Color(redValue.intValue, greenValue.intValue, blueValue.intValue))
     }
 
     LaunchedEffect(newColor) { onColorChange.invoke(newColor.toArgb()) }
@@ -730,8 +786,8 @@ private fun ColorCustomControlComponent(
         colorItems.forEach { entry ->
             ColorCustomControlItemComponent(
                 label = entry.first,
-                value = entry.second.value,
-                onValueChange = { entry.second.value = it },
+                value = entry.second.intValue,
+                onValueChange = { entry.second.intValue = it },
                 colorItemLabelWidth = colorItemLabelWidth,
                 colorValueLabelWidth = colorValueLabelWidth
             )
@@ -770,10 +826,27 @@ private fun ColorCustomControlItemComponent(
             style = MaterialTheme.typography.labelMedium,
         )
 
+        val settingsState = LocalSettingsState.current
         Slider(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 16.dp),
+                .padding(top = 16.dp, start = 12.dp, end = 12.dp, bottom = 8.dp)
+                .offset(y = (-2).dp)
+                .background(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = CircleShape
+                )
+                .height(40.dp)
+                .border(
+                    width = settingsState.borderWidth,
+                    color = MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer),
+                    shape = CircleShape
+                )
+                .padding(horizontal = 10.dp),
+            colors = SliderDefaults.colors(
+                inactiveTrackColor =
+                MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer)
+            ),
             valueRange = 0f..255f,
             value = animateFloatAsState(targetValue = value.toFloat()).value,
             onValueChange = { onValueChange(it.toInt()) },

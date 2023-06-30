@@ -298,6 +298,15 @@ fun rememberModalBottomSheetState(
 fun ModalSheetLayout(
     sheetContent: @Composable ColumnScope.() -> Unit,
     modifier: Modifier = Modifier,
+    dragHandle: @Composable ColumnScope.() -> Unit = {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            BottomSheetDefaults.DragHandle()
+        }
+    },
+    nestedScrollEnabled: Boolean = true,
     sheetModifier: Modifier = Modifier,
     sheetState: ModalSheetState = rememberModalBottomSheetState(Hidden),
     sheetShape: Shape = BottomSheetDefaults.ExpandedShape,
@@ -337,14 +346,16 @@ fun ModalSheetLayout(
                 .align(Alignment.TopCenter) // We offset from the top so we'll center from there
                 .widthIn(max = MaxModalBottomSheetWidth)
                 .fillMaxWidth()
-                .nestedScroll(
-                    remember(sheetState.swipeableState, orientation) {
-                        ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection(
-                            state = sheetState.swipeableState,
-                            orientation = orientation
-                        )
-                    }
-                )
+                .then(if (nestedScrollEnabled) {
+                    Modifier.nestedScroll(
+                        remember(sheetState.swipeableState, orientation) {
+                            ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection(
+                                state = sheetState.swipeableState,
+                                orientation = orientation
+                            )
+                        }
+                    )
+                } else Modifier)
                 .offset {
                     IntOffset(
                         0,
@@ -409,12 +420,7 @@ fun ModalSheetLayout(
         ) {
             Column(
                 content = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        BottomSheetDefaults.DragHandle()
-                    }
+                    dragHandle()
                     sheetContent()
                 }
             )

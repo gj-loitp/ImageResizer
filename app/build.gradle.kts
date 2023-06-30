@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "ru.tech.imageresizershrinker"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "ru.tech.imageresizershrinker"
         minSdk = 21
-        targetSdk = 33
-        versionCode = 60
-        versionName = "2.0.4"
+        targetSdk = 34
+        versionCode = 69
+        versionName = "2.2.0-beta3"
         resourceConfigurations += setOf(
             "en",
             "ar",
@@ -27,30 +27,25 @@ android {
             "hi",
             "it",
             "ja",
-            "nn",
             "pl",
             "pt-rBR",
             "ro",
             "ru",
             "tr",
-            "tt",
             "uk",
             "zh-rCN",
             "zh-rTW",
             "vi",
             "ko",
-            "kk",
             "af",
             "bn",
             "th",
             "id",
             "iw",
             "cs",
-            "ba",
             "sr",
             "da",
             "pt",
-            "eo",
             "sk"
         )
     }
@@ -89,7 +84,7 @@ android {
 dependencies {
 
     //AndroidX
-    implementation("androidx.activity:activity-compose:1.7.1")
+    implementation("androidx.activity:activity-compose:1.8.0-alpha06")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.exifinterface:exifinterface:1.3.6")
     implementation("androidx.appcompat:appcompat:1.7.0-alpha02")
@@ -105,23 +100,23 @@ dependencies {
     implementation("nl.dionsegijn:konfetti-compose:2.0.2")
 
     //Compose
-    implementation("androidx.compose.material3:material3:1.2.0-alpha01")
-    implementation("androidx.compose.material3:material3-window-size-class:1.2.0-alpha01")
-    implementation("androidx.compose.material:material-icons-extended:1.5.0-alpha04")
-    implementation("androidx.compose.material:material:1.5.0-alpha04")
+    implementation("androidx.compose.material3:material3:1.2.0-alpha03")
+    implementation("androidx.compose.material3:material3-window-size-class:1.2.0-alpha03")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0-alpha01")
+    implementation("androidx.compose.material:material:1.6.0-alpha01")
 
     //Di
     implementation("com.google.dagger:hilt-android:2.46.1")
     kapt("com.google.dagger:hilt-compiler:2.46.1")
 
     //Accompanist
-    implementation("com.google.accompanist:accompanist-placeholder-material:0.31.2-alpha")
+    implementation("com.google.accompanist:accompanist-placeholder-material:0.31.4-beta")
 
     //Coil
-    implementation("io.coil-kt:coil:2.3.0")
-    implementation("io.coil-kt:coil-compose:2.3.0")
-    implementation("io.coil-kt:coil-gif:2.3.0")
-    implementation("io.coil-kt:coil-svg:2.3.0")
+    implementation("io.coil-kt:coil:2.4.0")
+    implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation("io.coil-kt:coil-gif:2.4.0")
+    implementation("io.coil-kt:coil-svg:2.4.0")
 
     //Modules
     implementation(project(":cropper"))
@@ -130,5 +125,11 @@ dependencies {
     implementation(project(":beforeafter"))
     implementation(project(":image"))
     implementation(project(":modalsheet"))
+    implementation(project(":gpuimage"))
+    implementation(project(":drawbox"))
+
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.31.3-beta")
 
 }

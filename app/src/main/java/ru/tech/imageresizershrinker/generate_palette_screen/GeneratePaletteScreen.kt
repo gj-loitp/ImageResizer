@@ -3,15 +3,10 @@ package ru.tech.imageresizershrinker.generate_palette_screen
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +29,6 @@ import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -51,16 +45,18 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -69,97 +65,111 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.size.Size
 import com.smarttoolfactory.colordetector.ImageColorPalette
 import com.t8rin.dynamic.theme.LocalDynamicThemeState
-import dev.olshevski.navigation.reimagined.NavController
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
 import kotlinx.coroutines.launch
 import ru.tech.imageresizershrinker.R
 import ru.tech.imageresizershrinker.generate_palette_screen.viewModel.GeneratePaletteViewModel
-import ru.tech.imageresizershrinker.main_screen.components.LocalAlignment
-import ru.tech.imageresizershrinker.main_screen.components.LocalAllowChangeColorByImage
-import ru.tech.imageresizershrinker.main_screen.components.LocalBorderWidth
-import ru.tech.imageresizershrinker.main_screen.components.Screen
+import ru.tech.imageresizershrinker.pick_color_from_image_screen.copyColorIntoClipboard
+import ru.tech.imageresizershrinker.pick_color_from_image_screen.format
+import ru.tech.imageresizershrinker.theme.icons.PaletteSwatch
+import ru.tech.imageresizershrinker.utils.coil.filters.SaturationFilter
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.decodeBitmapByUri
 import ru.tech.imageresizershrinker.utils.modifier.block
 import ru.tech.imageresizershrinker.utils.modifier.drawHorizontalStroke
 import ru.tech.imageresizershrinker.utils.modifier.fabBorder
 import ru.tech.imageresizershrinker.utils.modifier.navBarsPaddingOnlyIfTheyAtTheBottom
-import ru.tech.imageresizershrinker.pick_color_from_image_screen.copyColorIntoClipboard
-import ru.tech.imageresizershrinker.pick_color_from_image_screen.format
-import ru.tech.imageresizershrinker.resize_screen.components.ImageNotPickedWidget
-import ru.tech.imageresizershrinker.resize_screen.components.LoadingDialog
-import ru.tech.imageresizershrinker.resize_screen.components.ZoomModalSheet
-import ru.tech.imageresizershrinker.theme.PaletteSwatch
-import ru.tech.imageresizershrinker.utils.BitmapUtils.decodeBitmapFromUri
-import ru.tech.imageresizershrinker.utils.LocalWindowSizeClass
-import ru.tech.imageresizershrinker.widget.LocalToastHost
-import ru.tech.imageresizershrinker.widget.Marquee
+import ru.tech.imageresizershrinker.utils.navigation.LocalNavController
+import ru.tech.imageresizershrinker.utils.navigation.Screen
+import ru.tech.imageresizershrinker.utils.storage.Picker
+import ru.tech.imageresizershrinker.utils.storage.localImagePickerMode
+import ru.tech.imageresizershrinker.utils.storage.rememberImagePicker
+import ru.tech.imageresizershrinker.widget.other.LoadingDialog
+import ru.tech.imageresizershrinker.widget.other.LocalToastHost
+import ru.tech.imageresizershrinker.widget.other.TopAppBarEmoji
+import ru.tech.imageresizershrinker.widget.image.ImageNotPickedWidget
+import ru.tech.imageresizershrinker.widget.sheets.ZoomModalSheet
+import ru.tech.imageresizershrinker.widget.other.showError
+import ru.tech.imageresizershrinker.widget.text.Marquee
+import ru.tech.imageresizershrinker.widget.utils.LocalSettingsState
+import ru.tech.imageresizershrinker.widget.utils.LocalWindowSizeClass
+import ru.tech.imageresizershrinker.widget.utils.isScrollingUp
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneratePaletteScreen(
     uriState: Uri?,
-    navController: NavController<Screen>,
     onGoBack: () -> Unit,
-    pushNewUri: (Uri?) -> Unit,
     viewModel: GeneratePaletteViewModel = viewModel()
 ) {
+    val settingsState = LocalSettingsState.current
     val context = LocalContext.current
     val toastHostState = LocalToastHost.current
-    val scope = rememberCoroutineScope()
     val themeState = LocalDynamicThemeState.current
-    val allowChangeColor = LocalAllowChangeColorByImage.current
+    val allowChangeColor = settingsState.allowChangeColorByImage
+    val navController = LocalNavController.current
+
+    val scope = rememberCoroutineScope()
+
+    var color by rememberSaveable(
+        saver = Saver(
+            save = { it.value.toArgb() },
+            restore = { mutableStateOf(Color(it)) }
+        )
+    ) { mutableStateOf(Color.Unspecified) }
 
     LaunchedEffect(uriState) {
         uriState?.let {
+            color = Color.Unspecified
             viewModel.setUri(it)
-            pushNewUri(null)
-            context.decodeBitmapFromUri(
+            context.decodeBitmapByUri(
                 uri = it,
+                originalSize = false,
                 onGetMimeType = {},
                 onGetExif = {},
                 onGetBitmap = viewModel::updateBitmap,
                 onError = {
                     scope.launch {
-                        toastHostState.showToast(
-                            context.getString(
-                                R.string.smth_went_wrong,
-                                it.localizedMessage ?: ""
-                            ),
-                            Icons.Rounded.ErrorOutline
-                        )
+                        toastHostState.showError(context, it)
                     }
                 }
             )
         }
     }
-    LaunchedEffect(viewModel.bitmap) {
+
+    LaunchedEffect(viewModel.bitmap, color) {
         viewModel.bitmap?.let {
-            if (allowChangeColor) themeState.updateColorByImage(it)
+            if (allowChangeColor) {
+                if (color == Color.Unspecified) {
+                    themeState.updateColorByImage(
+                        SaturationFilter(context, 2f).transform(it, Size.ORIGINAL)
+                    )
+                } else {
+                    themeState.updateColor(color)
+                }
+            }
         }
     }
 
     val pickImageLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.PickVisualMedia()
-        ) { uri ->
-            uri?.let {
+        rememberImagePicker(
+            mode = localImagePickerMode(Picker.Single)
+        ) { uris ->
+            uris.takeIf { it.isNotEmpty() }?.firstOrNull()?.let {
+                color = Color.Unspecified
                 viewModel.setUri(it)
-                context.decodeBitmapFromUri(
+                context.decodeBitmapByUri(
                     uri = it,
+                    originalSize = false,
                     onGetMimeType = {},
                     onGetExif = {},
                     onGetBitmap = viewModel::updateBitmap,
                     onError = {
                         scope.launch {
-                            toastHostState.showToast(
-                                context.getString(
-                                    R.string.smth_went_wrong,
-                                    it.localizedMessage ?: ""
-                                ),
-                                Icons.Rounded.ErrorOutline
-                            )
+                            toastHostState.showError(context, it)
                         }
                     }
                 )
@@ -167,9 +177,7 @@ fun GeneratePaletteScreen(
         }
 
     val pickImage = {
-        pickImageLauncher.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-        )
+        pickImageLauncher.pickImage()
     }
     val scrollState = rememberScrollState()
 
@@ -263,13 +271,15 @@ fun GeneratePaletteScreen(
                     }
                 },
                 actions = {
+                    if (viewModel.uri == null) {
+                        TopAppBarEmoji()
+                    }
                     zoomButton()
                     if (viewModel.uri != null) {
                         IconButton(
                             onClick = {
                                 if (navController.backstack.entries.isNotEmpty()) navController.pop()
-                                navController.navigate(Screen.PickColorFromImage)
-                                pushNewUri(viewModel.uri)
+                                navController.navigate(Screen.PickColorFromImage(viewModel.uri))
                             }
                         ) {
                             Icon(Icons.Rounded.Colorize, null)
@@ -302,7 +312,7 @@ fun GeneratePaletteScreen(
                                     .verticalScroll(scrollState)
                             ) {
                                 ImageColorPalette(
-                                    borderWidth = LocalBorderWidth.current,
+                                    borderWidth = settingsState.borderWidth,
                                     imageBitmap = bmp,
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -318,6 +328,7 @@ fun GeneratePaletteScreen(
                                             it.color.format()
                                         )
                                         scope.launch {
+                                            color = it.color
                                             toastHostState.showToast(
                                                 icon = Icons.Rounded.ContentPaste,
                                                 message = context.getString(R.string.color_copied)
@@ -344,7 +355,7 @@ fun GeneratePaletteScreen(
                                 contentScale = ContentScale.FillWidth
                             )
                             ImageColorPalette(
-                                borderWidth = LocalBorderWidth.current,
+                                borderWidth = settingsState.borderWidth,
                                 imageBitmap = bmp,
                                 modifier = Modifier
                                     .padding(bottom = 72.dp)
@@ -359,6 +370,7 @@ fun GeneratePaletteScreen(
                                         it.color.format()
                                     )
                                     scope.launch {
+                                        color = it.color
                                         toastHostState.showToast(
                                             icon = Icons.Rounded.ContentPaste,
                                             message = context.getString(R.string.color_copied)
@@ -384,12 +396,12 @@ fun GeneratePaletteScreen(
             modifier = Modifier
                 .navigationBarsPadding()
                 .padding(12.dp)
-                .align(if (!landscape) LocalAlignment.current else Alignment.BottomEnd)
+                .align(if (!landscape) settingsState.fabAlignment else Alignment.BottomEnd)
                 .fabBorder(),
             elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
         ) {
             val expanded =
-                scrollState.isScrollingUp(LocalAlignment.current != Alignment.BottomCenter || landscape)
+                scrollState.isScrollingUp(settingsState.fabAlignment != Alignment.BottomCenter || landscape)
             val horizontalPadding by animateDpAsState(targetValue = if (expanded) 16.dp else 0.dp)
             Row(
                 modifier = Modifier.padding(horizontal = horizontalPadding),
@@ -411,18 +423,4 @@ fun GeneratePaletteScreen(
     BackHandler {
         onGoBack()
     }
-}
-
-@Composable
-fun ScrollState.isScrollingUp(enabled: Boolean = true): Boolean {
-    var previousScrollOffset by remember(this) { mutableStateOf(value) }
-    return remember(this, enabled) {
-        derivedStateOf {
-            if (enabled) {
-                (previousScrollOffset >= value).also {
-                    previousScrollOffset = value
-                }
-            } else true
-        }
-    }.value
 }

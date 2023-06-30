@@ -3,30 +3,43 @@ package ru.tech.imageresizershrinker.batch_resize_screen.viewModel
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
-import android.os.ParcelFileDescriptor
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.tech.imageresizershrinker.resize_screen.components.BitmapInfo
-import ru.tech.imageresizershrinker.resize_screen.components.compressFormat
-import ru.tech.imageresizershrinker.resize_screen.components.extension
-import ru.tech.imageresizershrinker.utils.BitmapUtils.canShow
-import ru.tech.imageresizershrinker.utils.BitmapUtils.copyTo
-import ru.tech.imageresizershrinker.utils.BitmapUtils.flip
-import ru.tech.imageresizershrinker.utils.BitmapUtils.previewBitmap
-import ru.tech.imageresizershrinker.utils.BitmapUtils.resizeBitmap
-import ru.tech.imageresizershrinker.utils.BitmapUtils.rotate
-import ru.tech.imageresizershrinker.utils.SavingFolder
+import ru.tech.imageresizershrinker.common.SAVE_FOLDER
+import ru.tech.imageresizershrinker.utils.helper.BitmapInfo
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.applyPresetBy
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.canShow
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.copyTo
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.flip
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.previewBitmap
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.resizeBitmap
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.rotate
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.scaleUntilCanShow
+import ru.tech.imageresizershrinker.utils.helper.compressFormat
+import ru.tech.imageresizershrinker.utils.helper.extension
+import ru.tech.imageresizershrinker.utils.storage.BitmapSaveTarget
+import ru.tech.imageresizershrinker.utils.storage.FileController
+import ru.tech.imageresizershrinker.utils.storage.SavingFolder
+import javax.inject.Inject
 
-class BatchResizeViewModel : ViewModel() {
+@HiltViewModel
+class BatchResizeViewModel @Inject constructor(
+    private val dataStore: DataStore<Preferences>
+) : ViewModel() {
 
     private val _uris = mutableStateOf<List<Uri>?>(null)
     val uris by _uris
@@ -43,10 +56,13 @@ class BatchResizeViewModel : ViewModel() {
     private val _isLoading: MutableState<Boolean> = mutableStateOf(false)
     val isLoading: Boolean by _isLoading
 
-    private val _shouldShowPreview: MutableState<Boolean> = mutableStateOf(false)
+    private val _shouldShowPreview: MutableState<Boolean> = mutableStateOf(true)
     val shouldShowPreview by _shouldShowPreview
 
-    private val _presetSelected: MutableState<Int> = mutableStateOf(-1)
+    private val _showWarning: MutableState<Boolean> = mutableStateOf(false)
+    val showWarning: Boolean by _showWarning
+
+    private val _presetSelected: MutableState<Int> = mutableIntStateOf(-1)
     val presetSelected by _presetSelected
 
     private val _isTelegramSpecs: MutableState<Boolean> = mutableStateOf(false)
@@ -55,7 +71,7 @@ class BatchResizeViewModel : ViewModel() {
     private val _previewBitmap: MutableState<Bitmap?> = mutableStateOf(null)
     val previewBitmap: Bitmap? by _previewBitmap
 
-    private val _done: MutableState<Int> = mutableStateOf(0)
+    private val _done: MutableState<Int> = mutableIntStateOf(0)
     val done by _done
 
     private val _selectedUri: MutableState<Uri?> = mutableStateOf(null)
@@ -79,7 +95,7 @@ class BatchResizeViewModel : ViewModel() {
 
     fun updateUrisSilently(
         removedUri: Uri,
-        loader: (Uri) -> Bitmap?
+        loader: suspend (Uri) -> Bitmap?
     ) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -97,7 +113,7 @@ class BatchResizeViewModel : ViewModel() {
                             _bitmap.value = loader(it)
                         }
                     }
-                    resetValues(saveMime = true)
+                    resetValues(true)
                 }
                 val u = _uris.value?.toMutableList()?.apply {
                     remove(removedUri)
@@ -107,7 +123,10 @@ class BatchResizeViewModel : ViewModel() {
         }
     }
 
-    private fun checkBitmapAndUpdate(resetPreset: Boolean, resetTelegram: Boolean) {
+    private fun checkBitmapAndUpdate(
+        resetPreset: Boolean,
+        resetTelegram: Boolean
+    ) {
         if (resetPreset) {
             _presetSelected.value = -1
         }
@@ -115,9 +134,10 @@ class BatchResizeViewModel : ViewModel() {
             _isTelegramSpecs.value = false
         }
         job?.cancel()
+        _isLoading.value = false
         job = viewModelScope.launch {
-            delay(600)
             _isLoading.value = true
+            delay(600)
             _bitmap.value?.let { bmp ->
                 val preview = updatePreview(bmp)
                 _previewBitmap.value = null
@@ -126,8 +146,8 @@ class BatchResizeViewModel : ViewModel() {
 
                 _bitmapInfo.value = _bitmapInfo.value.run {
                     if (resizeType == 2) copy(
-                        height = preview.height.toString(),
-                        width = preview.width.toString()
+                        height = preview.height,
+                        width = preview.width
                     ) else this
                 }
             }
@@ -139,17 +159,19 @@ class BatchResizeViewModel : ViewModel() {
         bitmap: Bitmap
     ): Bitmap = withContext(Dispatchers.IO) {
         return@withContext bitmapInfo.run {
+            _showWarning.value = width * height * 4L >= 10_000 * 10_000 * 3L
             bitmap.previewBitmap(
-                quality,
-                width.toIntOrNull(),
-                height.toIntOrNull(),
-                mimeTypeInt,
-                resizeType,
-                rotationDegrees,
-                isFlipped
-            ) {
-                _bitmapInfo.value = _bitmapInfo.value.copy(sizeInBytes = it)
-            }
+                quality = quality,
+                widthValue = width,
+                heightValue = height,
+                mimeTypeInt = mimeTypeInt,
+                resizeType = resizeType,
+                rotationDegrees = rotationDegrees,
+                isFlipped = isFlipped,
+                onByteCount = {
+                    _bitmapInfo.value = _bitmapInfo.value.copy(sizeInBytes = it)
+                }
+            )
         }
     }
 
@@ -163,17 +185,23 @@ class BatchResizeViewModel : ViewModel() {
 
     fun resetValues(saveMime: Boolean = false) {
         _bitmapInfo.value = BitmapInfo(
-            width = _bitmap.value?.width?.toString() ?: "",
-            height = _bitmap.value?.height?.toString() ?: "",
-            sizeInBytes = _bitmap.value?.byteCount ?: 0,
+            width = _bitmap.value?.width ?: 0,
+            height = _bitmap.value?.height ?: 0,
             mimeTypeInt = if (saveMime) bitmapInfo.mimeTypeInt else 0
         )
         checkBitmapAndUpdate(resetPreset = true, resetTelegram = true)
     }
 
     fun updateBitmap(bitmap: Bitmap?) {
-        _bitmap.value = bitmap
-        resetValues(saveMime = true)
+        viewModelScope.launch {
+            val size = bitmap?.let { bitmap.width to bitmap.height }
+            _bitmap.value = bitmap?.scaleUntilCanShow()
+            resetValues(true)
+            _bitmapInfo.value = _bitmapInfo.value.copy(
+                width = size?.first ?: 0,
+                height = size?.second ?: 0
+            )
+        }
     }
 
     fun rotateLeft() {
@@ -203,14 +231,14 @@ class BatchResizeViewModel : ViewModel() {
         checkBitmapAndUpdate(resetPreset = false, resetTelegram = false)
     }
 
-    fun updateWidth(width: String) {
+    fun updateWidth(width: Int) {
         if (_bitmapInfo.value.width != width) {
             _bitmapInfo.value = _bitmapInfo.value.copy(width = width)
             checkBitmapAndUpdate(resetPreset = true, resetTelegram = true)
         }
     }
 
-    fun updateHeight(height: String) {
+    fun updateHeight(height: Int) {
         if (_bitmapInfo.value.height != height) {
             _bitmapInfo.value = _bitmapInfo.value.copy(height = height)
             checkBitmapAndUpdate(resetPreset = true, resetTelegram = true)
@@ -220,7 +248,7 @@ class BatchResizeViewModel : ViewModel() {
     fun setQuality(quality: Float) {
         if (_bitmapInfo.value.quality != quality) {
             _bitmapInfo.value = _bitmapInfo.value.copy(quality = quality.coerceIn(0f, 100f))
-            checkBitmapAndUpdate(resetPreset = true, resetTelegram = false)
+            checkBitmapAndUpdate(resetPreset = false, resetTelegram = false)
         }
     }
 
@@ -245,8 +273,8 @@ class BatchResizeViewModel : ViewModel() {
 
     fun setTelegramSpecs() {
         val new = _bitmapInfo.value.copy(
-            width = "512",
-            height = "512",
+            width = 512,
+            height = 512,
             mimeTypeInt = 3,
             resizeType = 1,
             quality = 100f
@@ -262,84 +290,85 @@ class BatchResizeViewModel : ViewModel() {
         _keepExif.value = boolean
     }
 
-    fun save(
-        isExternalStorageWritable: Boolean,
-        getSavingFolder: (ext: String) -> SavingFolder,
-        getFileDescriptor: (Uri?) -> ParcelFileDescriptor?,
-        getBitmap: (Uri) -> Pair<Bitmap?, ExifInterface?>,
-        onSuccess: (Boolean) -> Unit
+    fun saveBitamps(
+        fileController: FileController,
+        getBitmap: suspend (Uri) -> Pair<Bitmap?, ExifInterface?>,
+        onComplete: (success: Boolean) -> Unit
     ) = viewModelScope.launch {
         withContext(Dispatchers.IO) {
-            bitmapInfo.apply {
-                if (!isExternalStorageWritable) {
-                    onSuccess(false)
-                } else {
-                    _done.value = 0
-                    uris?.forEach { uri ->
-                        runCatching {
-                            getBitmap(uri)
-                        }.getOrNull()?.takeIf { it.first != null }?.let { (bitmap, exif) ->
-                            val tWidth = width.toIntOrNull() ?: bitmap!!.width
-                            val tHeight = height.toIntOrNull() ?: bitmap!!.height
-
-                            val localBitmap = bitmap!!.rotate(rotationDegrees)
-                                .resizeBitmap(tWidth, tHeight, resizeType)
-                                .flip(isFlipped)
-                            val savingFolder = getSavingFolder(mimeTypeInt.extension)
-
-                            val fos = savingFolder.outputStream
-
-                            localBitmap.compress(
-                                mimeTypeInt.extension.compressFormat,
-                                quality.toInt().coerceIn(0, 100),
-                                fos
+            if (!fileController.isExternalStorageWritable()) {
+                onComplete(false)
+            } else {
+                _done.value = 0
+                uris?.forEach { uri ->
+                    runCatching {
+                        getBitmap(uri)
+                    }.getOrNull()?.takeIf { it.first != null }?.let { (bitmap, exif) ->
+                        bitmapInfo.let {
+                            presetSelected.applyPresetBy(
+                                bitmap = bitmap,
+                                currentInfo = it
                             )
+                        }.apply {
+                            val localBitmap = bitmap!!.rotate(rotationDegrees)
+                                .resizeBitmap(width, height, resizeType)
+                                .flip(isFlipped)
+                            val writeTo: (SavingFolder) -> Unit = { savingFolder ->
+                                savingFolder.outputStream?.use {
+                                    localBitmap.compress(
+                                        mimeTypeInt.extension.compressFormat,
+                                        quality.toInt().coerceIn(0, 100),
+                                        it
+                                    )
+                                }
 
-                            fos!!.flush()
-                            fos.close()
-
-                            if (keepExif) {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    val fd = getFileDescriptor(savingFolder.fileUri)
-                                    fd?.fileDescriptor?.let {
-                                        val ex = ExifInterface(it)
+                                if (keepExif) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        val fd =
+                                            fileController.getFileDescriptorFor(savingFolder.fileUri)
+                                        fd?.fileDescriptor?.let {
+                                            val ex = ExifInterface(it)
+                                            exif?.copyTo(ex)
+                                            ex.saveAttributes()
+                                        }
+                                        fd?.close()
+                                    } else {
+                                        val image = savingFolder.file!!
+                                        val ex = ExifInterface(image)
                                         exif?.copyTo(ex)
                                         ex.saveAttributes()
                                     }
-                                    fd?.close()
-                                } else {
-                                    val image = savingFolder.file!!
-                                    val ex = ExifInterface(image)
-                                    exif?.copyTo(ex)
-                                    ex.saveAttributes()
                                 }
                             }
-
+                            fileController.getSavingFolder(
+                                BitmapSaveTarget(
+                                    bitmapInfo = this,
+                                    uri = uri,
+                                    sequenceNumber = _done.value + 1
+                                )
+                            ).getOrNull()?.let(writeTo) ?: dataStore.edit { it[SAVE_FOLDER] = "" }
                         }
-                        _done.value += 1
                     }
-                    onSuccess(true)
+                    _done.value += 1
                 }
+                onComplete(true)
             }
         }
     }
 
-    fun loadBitmapAsync(
-        loader: suspend () -> Bitmap?,
-        onGetBitmap: (Bitmap?) -> Unit
-    ) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                onGetBitmap(loader())
-            }
-        }
-    }
-
-    fun setBitmap(loader: () -> Bitmap?, uri: Uri) {
+    fun setBitmap(loader: suspend () -> Bitmap?, uri: Uri) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 _bitmap.value = loader()
-                resetValues(saveMime = true)
+                if (_presetSelected.value != -1) {
+                    setBitmapInfo(
+                        _presetSelected.value.applyPresetBy(
+                            _bitmap.value,
+                            _bitmapInfo.value
+                        )
+                    )
+                }
+                checkBitmapAndUpdate(resetPreset = false, resetTelegram = false)
                 _selectedUri.value = uri
             }
         }
@@ -350,8 +379,8 @@ class BatchResizeViewModel : ViewModel() {
     ): Pair<Bitmap, BitmapInfo>? {
         return bitmapResult.getOrNull()?.let { bitmap ->
             _bitmapInfo.value.run {
-                val tWidth = width.toIntOrNull() ?: bitmap.width
-                val tHeight = height.toIntOrNull() ?: bitmap.height
+                val tWidth = width
+                val tHeight = height
 
                 bitmap
                     .rotate(rotationDegrees)

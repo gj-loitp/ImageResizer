@@ -1,10 +1,10 @@
 <div align="center">
 </br>
-<img src="https://user-images.githubusercontent.com/52178347/236916263-f8f97c5c-0f07-4180-ace4-2b35289b344f.png" width="150" />
+<img src="https://github.com/T8RIN/ImageToolbox/assets/52178347/7561ef91-3c2e-4398-87a0-813a56a9f408" width="200" />
 
 </div>
 
-<h1 align="center">Image Resizer</h1>
+<h1 align="center">Image Toolbox</h1>
 
 </br>
 
@@ -39,14 +39,15 @@
   </a>
 </p>
 
-<h4 align="center">Powerful image resizer with width/height selection, cropping, EXIF editing, quality and output image type picking and batch processing feature. Based on Material You design following official Google guidelines</h4>
+<h4 align="center">Powerful image toolbox with width/height selection, filters applying, SVG to image convertion, cropping, EXIF editing, quality and output image type picking and batch processing feature.</h4>
 
 
-![Frame 5](https://user-images.githubusercontent.com/52178347/229357418-3ed5e83b-df35-4e61-87ca-e74135e831d1.png)
+![Frame 7 (1)](https://github.com/T8RIN/ImageToolbox/assets/52178347/0e7514fb-574b-483a-8ca7-1a9e62e2d408)
+
 
 <div align="center">
 
-# Download
+# ⬇️ Download
 Go to the [Releases](https://github.com/t8rin/imageresizer/releases/latest) and download latest apk or click badges below.
 
 [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
@@ -64,32 +65,73 @@ Go to the [Releases](https://github.com/t8rin/imageresizer/releases/latest) and 
 [<img src="https://user-images.githubusercontent.com/69304392/148696068-0cfea65d-b18f-4685-82b5-329a330b1c0d.png"
       alt='Get it on GitHub'
       align="center"
-      height="80">](https://github.com/t8rin/imageresizer/releases/latest)
-  
-<details>
- 
-<summary>
-  Additional
-</summary>
-  </br>
-  
-[<img src="https://user-images.githubusercontent.com/52178347/236238307-c5ac806f-eaaf-4e61-874b-328474bcbb54.svg"
-      alt='Get it on RuStore'
-      align="center"
-      height="54">](https://apps.rustore.ru/app/ru.tech.imageresizershrinker) 
-  
-</details>
-      
-
-# Buy me a coffee
-This application is completely free, but if you want to support the project development, you can go to the [QIWI](https://qiwi.com/n/T8RIN) page :heart:
-
+      height="80">](https://github.com/t8rin/imageresizer/releases/latest)    
 </div>
 
-# Functions
+# ✨ Features
 - Batch processing
-- Saving to any specific folder
-- EXIF metadata editing
+- Applying filter chains (More than 45 various filters)
+
+  <details>
+  <summary>Available filters</summary>
+  <br>
+  
+  - [x] Saturation
+  - [x] Contrast
+  - [x] Brightness
+  - [x] Exposure
+  - [x] RGB
+  - [x] Hue
+  - [x] White Balance
+  - [x] Monochrome
+  - [x] Black and White
+  - [x] False Color
+  - [x] Sharpen
+  - [x] Gamma
+  - [x] Highlights and Shadows
+  - [x] Haze
+  - [x] Sepia Tone
+  - [x] Color Inversion
+  - [x] Solarize
+  - [x] Vibrance
+  - [x] Luminance Threshold
+  - [x] Pixellate
+  - [x] Halftone
+  - [x] Crosshatch
+  - [x] Sobel Edge Detection
+  - [x] Sketch Filter
+  - [x] Toon Filter
+  - [x] SmoothToon Filter
+  - [x] CGA Colorspace Filter
+  - [x] Posterize
+  - [x] Convolution 3x3
+  - [x] Emboss Filter
+  - [x] Laplacian
+  - [x] Kuwahara Filter
+  - [x] Vignette
+  - [x] Gaussian Blur
+  - [x] Box Blur
+  - [x] Stack Blur
+  - [x] Fast Blur
+  - [x] Bilateral Blur
+  - [x] Zoom Blur
+  - [x] Swirl Distortion
+  - [x] Bulge Distortion
+  - [x] Sphere Refraction
+  - [x] Glass Sphere Refraction
+  - [x] Dilation
+  - [x] Non Maximum Suppression
+  - [x] Opacity
+  - [x] Weak Pixel Inclusion Filter
+  - [x] Color Matrix
+  - [x] Lookup
+  
+  </details>
+  
+- AES-256 GCM No Padding files encryption and decryption
+- EXIF metadata editing/deleting
+- Loading images from internet
+- Drawing on Image/Background
 - Image Resizing
   - Width changing
   - Height changing
@@ -104,9 +146,10 @@ This application is completely free, but if you want to support the project deve
   - Crop by aspect ratio
 - Format Convertion
   - WEBP
-  - PNG
   - JPEG
   - JPG
+  - PNG
+  - SVG, GIF to WEBP, PNG, JPEG, JPG
   - Telegram sticker PNG format
 - Color Utils
   - Palette generation
@@ -115,13 +158,14 @@ This application is completely free, but if you want to support the project deve
   - Rotating
   - Flipping
   - Comparing images
-  
+  - Previewing SVG, GIF and all types of images
+  - Saving to any specific folder
 
 #
-![Frame 6](https://user-images.githubusercontent.com/52178347/229357423-22ea1144-d838-438d-bc39-6ae431e491e6.png)
+![Frame 8 (3)](https://github.com/T8RIN/ImageToolbox/assets/52178347/147ecde5-4d92-4926-9356-636db84e3a86)
 
   
-# UI tweaks
+# 🌟 UI tweaks
 - Custom app color scheme
 - Light/Dark mode
 - AMOLED mode
@@ -132,7 +176,7 @@ This application is completely free, but if you want to support the project deve
 (Yes, app supports dynamic coloring based on wallpapers for every android version)
 
 
-# Tech stack & Open-source libraries
+# 📚 Tech stack & Open-source libraries
 - Minimum SDK level 21
 
 - [Kotlin](https://kotlinlang.org/) based 
@@ -153,7 +197,7 @@ This application is completely free, but if you want to support the project deve
 
 - [Compose Navigation Reimagined](https://github.com/olshevski/compose-navigation-reimagined) - High intelligence navigation library for Jetpack Compose.
 
-- [Konfetti](https://github.com/DanielMartinus/Konfetti) to establish beatyfull particle system.
+- [Konfetti](https://github.com/DanielMartinus/Konfetti) to establish beatyful particle system.
 
 - Jetpack
   - [Compose](https://developer.android.com/jetpack/compose) - Modern Declarative UI style framework based on composable functions.
@@ -168,31 +212,37 @@ This application is completely free, but if you want to support the project deve
   
   - [Exif Interface](https://developer.android.com/jetpack/androidx/releases/exifinterface) - Read and write image file EXIF tags.
 
+- [GPU Image](https://github.com/cats-oss/android-gpuimage) for creating and applying filters to the images.
+
 <div align="center">
 
+#
+![Frame 9](https://github.com/T8RIN/ImageToolbox/assets/52178347/1727027c-c8ac-4154-9e9d-a9319fcf8057)
 
-# Translation
+# 🌐 Translation
 You can help translate ImageResizer into your language on [Hosted Weblate](https://hosted.weblate.org/engage/image-resizer/)
 
-[![Состояние перевода](https://hosted.weblate.org/widgets/image-resizer/-/image-resizer/multi-auto.svg)](https://hosted.weblate.org/engage/image-resizer/)
+[![Состояние перевода](https://hosted.weblate.org/widgets/image-resizer/-/horizontal-auto.svg)](https://hosted.weblate.org/engage/image-resizer/)
 </br>
 [![Translation status](https://hosted.weblate.org/widgets/image-resizer/-/image-resizer/287x66-black.png)](https://hosted.weblate.org/engage/image-resizer/)
 
 
-# Find this repository useful? :heart:
+# ❤️ Find this repository useful?
 Support it by joining __[stargazers](https://github.com/t8rin/ImageResizer/stargazers)__ for this repository. :star: <br>
 And __[follow](https://github.com/t8rin)__ me for my next creations! 🤩
 
+# ☕ Buy me a coffee
+This application is completely free, but if you want to support the project development, you can go to the [QIWI](https://qiwi.com/n/T8RIN) page :heart:
 
-# Star History
+# ⭐ Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=t8rin/ImageResizer&type=Date)](https://star-history.com/#t8rin/ImageResizer&Date)
 
-# Contributors
+# 📢 Contributors
 <a href="https://github.com/t8rin/imageresizer/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=t8rin/Imageresizer" />
 </a>
 
-# License
+# ⚖️ License
 ```xml
 Designed and developed by 2023 T8RIN
 

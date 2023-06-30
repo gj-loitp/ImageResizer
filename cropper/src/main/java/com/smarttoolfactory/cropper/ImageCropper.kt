@@ -1,19 +1,27 @@
 package com.smarttoolfactory.cropper
 
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +32,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -43,7 +52,11 @@ import com.smarttoolfactory.cropper.state.DynamicCropState
 import com.smarttoolfactory.cropper.state.rememberCropState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 
 @Composable
 fun ImageCropper(
@@ -95,7 +108,9 @@ fun ImageCropper(
 
         with(LocalDensity.current) {
             imageWidthPx = imageWidth.roundToPx()
-            imageHeightPx = imageHeight.roundToPx()
+            imageHeightPx =
+                imageHeight.roundToPx() - if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT) 0
+                else WindowInsets.navigationBars.getBottom(LocalDensity.current)
             containerWidth = containerWidthPx.toDp()
             containerHeight = containerHeightPx.toDp()
         }
@@ -131,7 +146,7 @@ fun ImageCropper(
             }
         }
 
-        val pressedStateColor = remember(cropStyle.backgroundColor){
+        val pressedStateColor = remember(cropStyle.backgroundColor) {
             cropStyle.backgroundColor
                 .copy(cropStyle.backgroundColor.alpha * .7f)
         }
@@ -189,7 +204,6 @@ fun ImageCropper(
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun ImageCropper(
     modifier: Modifier,
@@ -216,9 +230,8 @@ private fun ImageCropper(
 
         AnimatedVisibility(
             visible = visible,
-            enter = scaleIn(tween(500))
+            enter = fadeIn(tween(500))
         ) {
-
             ImageCropperImpl(
                 modifier = modifier,
                 imageBitmap = imageBitmap,
@@ -270,7 +283,7 @@ private fun ImageCropperImpl(
         val handleColor = cropStyle.handleColor
         val drawHandles = cropType == CropType.Dynamic
         val strokeWidth = cropStyle.strokeWidth
-        
+
         DrawingOverlay(
             modifier = Modifier.size(containerWidth, containerHeight),
             drawOverlay = drawOverlay,

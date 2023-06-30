@@ -1,6 +1,8 @@
 package ru.tech.imageresizershrinker.crop_screen.components
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +24,6 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,8 +39,9 @@ import com.smarttoolfactory.cropper.model.CropAspectRatio
 import com.smarttoolfactory.cropper.util.createRectShape
 import com.smarttoolfactory.cropper.widget.AspectRatioSelectionCard
 import ru.tech.imageresizershrinker.R
-import ru.tech.imageresizershrinker.utils.modifier.block
-import ru.tech.imageresizershrinker.widget.AutoSizeText
+import ru.tech.imageresizershrinker.theme.outlineVariant
+import ru.tech.imageresizershrinker.widget.text.AutoSizeText
+import ru.tech.imageresizershrinker.widget.utils.LocalSettingsState
 
 @Composable
 fun AspectRatioSelection(
@@ -48,6 +50,7 @@ fun AspectRatioSelection(
     horizontal: Boolean = true,
     onAspectRatioChange: (CropAspectRatio) -> Unit
 ) {
+    val settingsState = LocalSettingsState.current
     val aspectRatios = aspectRatios()
 
     if (horizontal) {
@@ -55,10 +58,10 @@ fun AspectRatioSelection(
             modifier = modifier,
             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
             contentPadding = PaddingValues(
-                start = 4.dp,
+                start = 16.dp,
                 top = 4.dp,
                 bottom = 4.dp,
-                end = 4.dp + WindowInsets
+                end = 16.dp + WindowInsets
                     .navigationBars
                     .asPaddingValues()
                     .calculateEndPadding(LocalLayoutDirection.current)
@@ -67,22 +70,62 @@ fun AspectRatioSelection(
         ) {
             itemsIndexed(aspectRatios) { index, item ->
                 if (item.aspectRatio != AspectRatio.Original) {
+                    val selected = selectedIndex == index
                     AspectRatioSelectionCard(
                         modifier = Modifier
                             .width(80.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .clickable { onAspectRatioChange(aspectRatios[index]) }
-                            .block(color = if (selectedIndex == index) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified),
+                            .background(
+                                MaterialTheme
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .copy(alpha = animateFloatAsState(if (selected) 1f else 0.5f).value),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                animateDpAsState(
+                                    if (!selected) {
+                                        settingsState.borderWidth
+                                    } else {
+                                        settingsState.borderWidth.coerceAtLeast(1.dp) * 2
+                                    }
+                                ).value,
+                                MaterialTheme.colorScheme.outlineVariant(
+                                    animateFloatAsState(if (selected) 0.5f else 0.2f).value
+                                ),
+                                RoundedCornerShape(16.dp)
+                            ),
                         contentColor = Color.Transparent,
                         color = MaterialTheme.colorScheme.onSurface,
                         cropAspectRatio = item
                     )
                 } else {
+                    val selected = selectedIndex == index
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
                             .clickable { onAspectRatioChange(aspectRatios[index]) }
-                            .block(color = if (selectedIndex == index) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified)
+                            .background(
+                                MaterialTheme
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .copy(alpha = animateFloatAsState(if (selected) 1f else 0.5f).value),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                animateDpAsState(
+                                    if (!selected) {
+                                        settingsState.borderWidth
+                                    } else {
+                                        settingsState.borderWidth.coerceAtLeast(1.dp) * 2
+                                    }
+                                ).value,
+                                MaterialTheme.colorScheme.outlineVariant(
+                                    animateFloatAsState(if (selected) 0.5f else 0.2f).value
+                                ),
+                                RoundedCornerShape(16.dp)
+                            )
                             .padding(4.dp)
                     ) {
                         Column(
@@ -114,23 +157,63 @@ fun AspectRatioSelection(
         ) {
             itemsIndexed(aspectRatios) { index, item ->
                 if (item.aspectRatio != AspectRatio.Original) {
+                    val selected = selectedIndex == index
                     AspectRatioSelectionCard(
                         modifier = Modifier
                             .width(90.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .clickable { onAspectRatioChange(aspectRatios[index]) }
-                            .block(color = if (selectedIndex == index) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified),
+                            .background(
+                                MaterialTheme
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .copy(alpha = animateFloatAsState(if (selected) 1f else 0.5f).value),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                animateDpAsState(
+                                    if (!selected) {
+                                        settingsState.borderWidth
+                                    } else {
+                                        settingsState.borderWidth.coerceAtLeast(1.dp) * 2
+                                    }
+                                ).value,
+                                MaterialTheme.colorScheme.outlineVariant(
+                                    animateFloatAsState(if (selected) 0.5f else 0.2f).value
+                                ),
+                                RoundedCornerShape(16.dp)
+                            ),
                         contentColor = Color.Transparent,
                         color = MaterialTheme.colorScheme.onSurface,
                         cropAspectRatio = item
                     )
                 } else {
+                    val selected = selectedIndex == index
                     Box(
                         modifier = Modifier
                             .width(90.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .clickable { onAspectRatioChange(aspectRatios[index]) }
-                            .block(color = if (selectedIndex == index) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified)
+                            .background(
+                                MaterialTheme
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .copy(alpha = animateFloatAsState(if (selected) 1f else 0.5f).value),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .border(
+                                animateDpAsState(
+                                    if (!selected) {
+                                        settingsState.borderWidth
+                                    } else {
+                                        settingsState.borderWidth.coerceAtLeast(1.dp) * 2
+                                    }
+                                ).value,
+                                MaterialTheme.colorScheme.outlineVariant(
+                                    animateFloatAsState(if (selected) 0.5f else 0.2f).value
+                                ),
+                                RoundedCornerShape(16.dp)
+                            )
                             .padding(4.dp)
                     ) {
                         Column(
@@ -168,9 +251,19 @@ fun aspectRatios(
             aspectRatio = AspectRatio(9 / 16f)
         ),
         CropAspectRatio(
+            title = "9:18.5",
+            shape = createRectShape(AspectRatio(9f / 18.5f)),
+            aspectRatio = AspectRatio(9f / 18.5f)
+        ),
+        CropAspectRatio(
             title = "9:21",
             shape = createRectShape(AspectRatio(9 / 21f)),
             aspectRatio = AspectRatio(9 / 21f)
+        ),
+        CropAspectRatio(
+            title = "1:1.91",
+            shape = createRectShape(AspectRatio(1 / 1.91f)),
+            aspectRatio = AspectRatio(1f / 1.91f)
         ),
         CropAspectRatio(
             title = "2:3",
@@ -201,6 +294,11 @@ fun aspectRatios(
             title = "21:9",
             shape = createRectShape(AspectRatio(21 / 9f)),
             aspectRatio = AspectRatio(21 / 9f)
+        ),
+        CropAspectRatio(
+            title = "18.5:9",
+            shape = createRectShape(AspectRatio(18.5f / 9f)),
+            aspectRatio = AspectRatio(18.5f / 9f)
         ),
         CropAspectRatio(
             title = "16:9",

@@ -2,6 +2,8 @@ package ru.tech.imageresizershrinker.main_screen.viewModel
 
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -24,24 +26,33 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.w3c.dom.Element
 import ru.tech.imageresizershrinker.BuildConfig
-import ru.tech.imageresizershrinker.main_screen.components.Screen
+import ru.tech.imageresizershrinker.common.ADD_ORIGINAL_NAME
+import ru.tech.imageresizershrinker.common.ADD_SEQ_NUM
+import ru.tech.imageresizershrinker.common.ADD_SIZE
+import ru.tech.imageresizershrinker.common.ALIGNMENT
+import ru.tech.imageresizershrinker.common.AMOLED_MODE
+import ru.tech.imageresizershrinker.common.APP_COLOR
+import ru.tech.imageresizershrinker.common.APP_RELEASES
+import ru.tech.imageresizershrinker.common.AUTO_CACHE_CLEAR
+import ru.tech.imageresizershrinker.common.BORDER_WIDTH
+import ru.tech.imageresizershrinker.common.COLOR_TUPLES
+import ru.tech.imageresizershrinker.common.DYNAMIC_COLORS
+import ru.tech.imageresizershrinker.common.EMOJI
+import ru.tech.imageresizershrinker.common.EMOJI_COUNT
+import ru.tech.imageresizershrinker.common.FILENAME_PREFIX
+import ru.tech.imageresizershrinker.common.GROUP_OPTIONS
+import ru.tech.imageresizershrinker.common.IMAGE_MONET
+import ru.tech.imageresizershrinker.common.NIGHT_MODE
+import ru.tech.imageresizershrinker.common.ORDER
+import ru.tech.imageresizershrinker.common.PICKER_MODE
+import ru.tech.imageresizershrinker.common.PRESETS
+import ru.tech.imageresizershrinker.common.SAVE_FOLDER
+import ru.tech.imageresizershrinker.common.SHOW_DIALOG
 import ru.tech.imageresizershrinker.theme.asString
 import ru.tech.imageresizershrinker.theme.defaultColorTuple
 import ru.tech.imageresizershrinker.theme.toColorTupleList
-import ru.tech.imageresizershrinker.utils.ALIGNMENT
-import ru.tech.imageresizershrinker.utils.AMOLED_MODE
-import ru.tech.imageresizershrinker.utils.APP_COLOR
-import ru.tech.imageresizershrinker.utils.APP_RELEASES
-import ru.tech.imageresizershrinker.utils.BORDER_WIDTH
-import ru.tech.imageresizershrinker.utils.COLOR_TUPLES
-import ru.tech.imageresizershrinker.utils.DYNAMIC_COLORS
-import ru.tech.imageresizershrinker.utils.FILENAME_PREFIX
-import ru.tech.imageresizershrinker.utils.IMAGE_MONET
-import ru.tech.imageresizershrinker.utils.NIGHT_MODE
-import ru.tech.imageresizershrinker.utils.PRESETS
-import ru.tech.imageresizershrinker.utils.SAVE_FOLDER
-import ru.tech.imageresizershrinker.utils.SHOW_DIALOG
-import ru.tech.imageresizershrinker.widget.ToastHostState
+import ru.tech.imageresizershrinker.utils.navigation.Screen
+import ru.tech.imageresizershrinker.widget.other.ToastHostState
 import java.net.URL
 import javax.inject.Inject
 import javax.xml.parsers.DocumentBuilderFactory
@@ -51,13 +62,31 @@ class MainViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
 
-    private val _alignment = mutableStateOf(1)
+    private val _imagePickerModeInt = mutableIntStateOf(0)
+    val imagePickerModeInt by _imagePickerModeInt
+
+    private val _emojisCount = mutableIntStateOf(1)
+    val emojisCount by _emojisCount
+
+    private val _addSizeInFilename = mutableStateOf(false)
+    val addSizeInFilename by _addSizeInFilename
+
+    private val _addOriginalFilename = mutableStateOf(false)
+    val addOriginalFilename by _addOriginalFilename
+
+    private val _addSequenceNumber = mutableStateOf(true)
+    val addSequenceNumber by _addSequenceNumber
+
+    private val _selectedEmoji = mutableIntStateOf(0)
+    val selectedEmoji by _selectedEmoji
+
+    private val _alignment = mutableIntStateOf(1)
     val alignment by _alignment
 
     private val _saveFolderUri = mutableStateOf<Uri?>(null)
     val saveFolderUri by _saveFolderUri
 
-    private val _nightMode = mutableStateOf(2)
+    private val _nightMode = mutableIntStateOf(2)
     val nightMode by _nightMode
 
     private val _dynamicColors = mutableStateOf(true)
@@ -75,7 +104,7 @@ class MainViewModel @Inject constructor(
     private val _colorTupleList = mutableStateOf(emptyList<ColorTuple>())
     val colorTupleList by _colorTupleList
 
-    private val _borderWidth = mutableStateOf(1f)
+    private val _borderWidth = mutableFloatStateOf(1f)
     val borderWidth by _borderWidth
 
     private val _localPresets = mutableStateOf(emptyList<Int>())
@@ -106,6 +135,15 @@ class MainViewModel @Inject constructor(
     private val _showDialogOnStartUp = mutableStateOf(true)
     val showDialogOnStartUp by _showDialogOnStartUp
 
+    private val _clearCacheOnLaunch = mutableStateOf(false)
+    val clearCacheOnLaunch by _clearCacheOnLaunch
+
+    private val _groupOptionsByType = mutableStateOf(true)
+    val groupOptionsByType by _groupOptionsByType
+
+    private val _screenList = mutableStateOf(Screen.entries)
+    val screenList by _screenList
+
     private val _tag = mutableStateOf("")
     val tag by _tag
 
@@ -117,7 +155,7 @@ class MainViewModel @Inject constructor(
     init {
         runBlocking {
             dataStore.edit { prefs ->
-                _nightMode.value = prefs[NIGHT_MODE] ?: 2
+                _nightMode.intValue = prefs[NIGHT_MODE] ?: 2
                 _dynamicColors.value = prefs[DYNAMIC_COLORS] ?: true
                 _amoledMode.value = prefs[AMOLED_MODE] ?: false
                 _appColorTuple.value = (prefs[APP_COLOR]?.let { tuple ->
@@ -130,8 +168,16 @@ class MainViewModel @Inject constructor(
                         surface = colorTuple.getOrNull(3)?.toIntOrNull()?.let { Color(it) },
                     )
                 }) ?: defaultColorTuple
-                _borderWidth.value = prefs[BORDER_WIDTH]?.toFloatOrNull() ?: 1f
+                _borderWidth.floatValue = prefs[BORDER_WIDTH] ?: 1f
                 _showDialogOnStartUp.value = prefs[SHOW_DIALOG] ?: true
+                _selectedEmoji.intValue = prefs[EMOJI] ?: 0
+                _screenList.value = prefs[ORDER]?.split("/")?.map {
+                    val id = it.toInt()
+                    Screen.entries[id]
+                } ?: Screen.entries
+                _emojisCount.intValue = prefs[EMOJI_COUNT] ?: 1
+                _clearCacheOnLaunch.value = prefs[AUTO_CACHE_CLEAR] ?: false
+                _groupOptionsByType.value = prefs[GROUP_OPTIONS] ?: true
             }
         }
         dataStore.data.onEach { prefs ->
@@ -139,7 +185,7 @@ class MainViewModel @Inject constructor(
                 if (uri.isEmpty()) null
                 else Uri.parse(uri)
             }
-            _nightMode.value = prefs[NIGHT_MODE] ?: 2
+            _nightMode.intValue = prefs[NIGHT_MODE] ?: 2
             _dynamicColors.value = prefs[DYNAMIC_COLORS] ?: true
             _allowImageMonet.value = prefs[IMAGE_MONET] ?: true
             _amoledMode.value = prefs[AMOLED_MODE] ?: false
@@ -153,19 +199,78 @@ class MainViewModel @Inject constructor(
                     surface = colorTuple.getOrNull(3)?.toIntOrNull()?.let { Color(it) },
                 )
             }) ?: defaultColorTuple
-            _borderWidth.value = prefs[BORDER_WIDTH]?.toFloatOrNull() ?: 1f
+            _borderWidth.floatValue = prefs[BORDER_WIDTH] ?: 1f
             _localPresets.value = ((prefs[PRESETS]?.split("*")?.map {
                 it.toInt()
             } ?: emptyList()) + List(7) { 100 - it * 10 }).toSortedSet().reversed().toList()
 
             _colorTupleList.value = prefs[COLOR_TUPLES].toColorTupleList()
 
-            _alignment.value = prefs[ALIGNMENT] ?: 1
+            _alignment.intValue = prefs[ALIGNMENT] ?: 1
             _showDialogOnStartUp.value = prefs[SHOW_DIALOG] ?: true
             _filenamePrefix.value = prefs[FILENAME_PREFIX] ?: ""
-
+            _selectedEmoji.intValue = prefs[EMOJI] ?: 0
+            _addSizeInFilename.value = prefs[ADD_SIZE] ?: false
+            _imagePickerModeInt.intValue = prefs[PICKER_MODE] ?: 0
+            _screenList.value = prefs[ORDER]?.split("/")?.map {
+                val id = it.toInt()
+                Screen.entries[id]
+            } ?: Screen.entries
+            _emojisCount.intValue = prefs[EMOJI_COUNT] ?: 1
+            _addOriginalFilename.value = prefs[ADD_ORIGINAL_NAME] ?: false
+            _addSequenceNumber.value = prefs[ADD_SEQ_NUM] ?: true
+            _clearCacheOnLaunch.value = prefs[AUTO_CACHE_CLEAR] ?: false
+            _groupOptionsByType.value = prefs[GROUP_OPTIONS] ?: true
         }.launchIn(viewModelScope)
         tryGetUpdate(showDialog = showDialogOnStartUp)
+    }
+
+    fun updateAddSequenceNumber() {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[ADD_SEQ_NUM] = !_addSequenceNumber.value
+            }
+        }
+    }
+
+    fun updateAddOriginalFilename() {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[ADD_ORIGINAL_NAME] = !_addOriginalFilename.value
+            }
+        }
+    }
+
+    fun updateEmojisCount(count: Int) {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[EMOJI_COUNT] = count
+            }
+        }
+    }
+
+    fun updateImagePickerMode(mode: Int) {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[PICKER_MODE] = mode
+            }
+        }
+    }
+
+    fun updateAddFileSize() {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[ADD_SIZE] = !_addSizeInFilename.value
+            }
+        }
+    }
+
+    fun updateEmoji(emoji: Int) {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[EMOJI] = emoji
+            }
+        }
     }
 
     fun updateFilename(name: String) {
@@ -216,7 +321,7 @@ class MainViewModel @Inject constructor(
         job = viewModelScope.launch {
             delay(10)
             dataStore.edit {
-                it[BORDER_WIDTH] = width.toString()
+                it[BORDER_WIDTH] = width
             }
         }
     }
@@ -275,7 +380,7 @@ class MainViewModel @Inject constructor(
                             }
                         }
 
-                        if (tag != BuildConfig.VERSION_NAME) {
+                        if (isNeedUpdate(tag)) {
                             _updateAvailable.value = true
                             if (showDialog) {
                                 _showUpdateDialog.value = true
@@ -289,11 +394,10 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun updateUri(uri: Uri?) {
-        _uris.value = null
-        uri?.let {
-            _uris.value = listOf(uri)
-        }
+    private fun isNeedUpdate(tag: String): Boolean {
+        return (tag != BuildConfig.VERSION_NAME) && !tag.contains("beta") && !tag.contains("alpha") && !tag.contains(
+            "rc"
+        )
     }
 
     fun hideSelectDialog() {
@@ -301,11 +405,9 @@ class MainViewModel @Inject constructor(
     }
 
     fun updateUris(uris: List<Uri>?) {
-        _uris.value = null
         _uris.value = uris
 
-        val dest = navController.backstack.entries.lastOrNull()?.destination
-        if (uris != null && dest == Screen.Main) _showSelectDialog.value = true
+        if (uris != null) _showSelectDialog.value = true
     }
 
     fun showToast(
@@ -343,6 +445,30 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             dataStore.edit {
                 it[ALIGNMENT] = align.toInt()
+            }
+        }
+    }
+
+    fun updateOrder(data: List<Screen>) {
+        viewModelScope.launch {
+            dataStore.edit { prefs ->
+                prefs[ORDER] = data.joinToString("/") { it.id.toString() }
+            }
+        }
+    }
+
+    fun setClearCacheOnLaunch(value: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[AUTO_CACHE_CLEAR] = value
+            }
+        }
+    }
+
+    fun updateGroupOptionsByTypes(value: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit {
+                it[GROUP_OPTIONS] = value
             }
         }
     }

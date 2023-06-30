@@ -3,11 +3,7 @@ package ru.tech.imageresizershrinker.compare_screen
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -77,35 +73,39 @@ import com.t8rin.dynamic.theme.extractPrimaryColor
 import kotlinx.coroutines.launch
 import ru.tech.imageresizershrinker.R
 import ru.tech.imageresizershrinker.compare_screen.viewModel.CompareViewModel
-import ru.tech.imageresizershrinker.main_screen.components.LocalAlignment
-import ru.tech.imageresizershrinker.main_screen.components.LocalAllowChangeColorByImage
-import ru.tech.imageresizershrinker.main_screen.components.LocalBorderWidth
-import ru.tech.imageresizershrinker.resize_screen.components.ImageNotPickedWidget
-import ru.tech.imageresizershrinker.resize_screen.components.LoadingDialog
 import ru.tech.imageresizershrinker.theme.blend
 import ru.tech.imageresizershrinker.theme.outlineVariant
-import ru.tech.imageresizershrinker.utils.BitmapUtils.getBitmapByUri
-import ru.tech.imageresizershrinker.utils.LocalWindowSizeClass
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.getBitmapByUri
 import ru.tech.imageresizershrinker.utils.modifier.block
 import ru.tech.imageresizershrinker.utils.modifier.drawHorizontalStroke
 import ru.tech.imageresizershrinker.utils.modifier.fabBorder
 import ru.tech.imageresizershrinker.utils.modifier.navBarsPaddingOnlyIfTheyAtTheBottom
-import ru.tech.imageresizershrinker.widget.LocalToastHost
-import ru.tech.imageresizershrinker.widget.Marquee
+import ru.tech.imageresizershrinker.utils.storage.Picker
+import ru.tech.imageresizershrinker.utils.storage.localImagePickerMode
+import ru.tech.imageresizershrinker.utils.storage.rememberImagePicker
+import ru.tech.imageresizershrinker.widget.other.LoadingDialog
+import ru.tech.imageresizershrinker.widget.other.LocalToastHost
+import ru.tech.imageresizershrinker.widget.other.TopAppBarEmoji
+import ru.tech.imageresizershrinker.widget.image.ImageNotPickedWidget
+import ru.tech.imageresizershrinker.widget.text.Marquee
+import ru.tech.imageresizershrinker.widget.utils.LocalSettingsState
+import ru.tech.imageresizershrinker.widget.utils.LocalWindowSizeClass
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompareScreen(
     comparableUris: Pair<Uri, Uri>?,
-    pushNewUris: (List<Uri>?) -> Unit,
     onGoBack: () -> Unit,
     viewModel: CompareViewModel = viewModel()
 ) {
+    val settingsState = LocalSettingsState.current
+
     val context = LocalContext.current
     val toastHostState = LocalToastHost.current
-    val scope = rememberCoroutineScope()
     val themeState = LocalDynamicThemeState.current
-    val allowChangeColor = LocalAllowChangeColorByImage.current
+    val allowChangeColor = settingsState.allowChangeColorByImage
+
+    val scope = rememberCoroutineScope()
 
     var progress by rememberSaveable { mutableStateOf(50f) }
 
@@ -119,9 +119,8 @@ fun CompareScreen(
 
     LaunchedEffect(comparableUris) {
         comparableUris?.let { (before, after) ->
-            pushNewUris(null)
-            val newBeforeBitmap = context.getBitmapByUri(before)
-            val newAfterBitmap = context.getBitmapByUri(after)
+            val newBeforeBitmap = context.getBitmapByUri(before, originalSize = false)
+            val newAfterBitmap = context.getBitmapByUri(after, originalSize = false)
             if (newAfterBitmap != null && newBeforeBitmap != null) {
                 viewModel.updateBitmapData(
                     newBeforeBitmap = newBeforeBitmap,
@@ -140,8 +139,8 @@ fun CompareScreen(
     }
 
     val pickImageLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.PickMultipleVisualMedia(2)
+        rememberImagePicker(
+            mode = localImagePickerMode(Picker.Multiple)
         ) { uris ->
             uris.takeIf { it.isNotEmpty() }?.let {
                 if (uris.size != 2) {
@@ -152,30 +151,29 @@ fun CompareScreen(
                         )
                     }
                 } else {
-                    val newBeforeBitmap = context.getBitmapByUri(uris[0])
-                    val newAfterBitmap = context.getBitmapByUri(uris[1])
-                    if (newAfterBitmap != null && newBeforeBitmap != null) {
-                        viewModel.updateBitmapData(
-                            newBeforeBitmap = newBeforeBitmap,
-                            newAfterBitmap = newAfterBitmap
-                        )
-                        progress = 50f
-                    } else {
-                        scope.launch {
-                            toastHostState.showToast(
-                                context.getString(R.string.something_went_wrong),
-                                Icons.Rounded.ErrorOutline
-                            )
+                    viewModel.updateBitmapDataAsync(
+                        onSuccess = {
+                            progress = 50f
+                        }, loader = {
+                            context.getBitmapByUri(
+                                uris[0],
+                                originalSize = false,
+                            ) to context.getBitmapByUri(uris[1], originalSize = false)
+                        }, onError = {
+                            scope.launch {
+                                toastHostState.showToast(
+                                    context.getString(R.string.something_went_wrong),
+                                    Icons.Rounded.ErrorOutline
+                                )
+                            }
                         }
-                    }
+                    )
                 }
             }
         }
 
     val pickImage = {
-        pickImageLauncher.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-        )
+        pickImageLauncher.pickImage()
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -212,6 +210,9 @@ fun CompareScreen(
                     colors = TopAppBarDefaults.mediumTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                     ),
+                    actions = {
+                        TopAppBarEmoji()
+                    },
                     modifier = Modifier.drawHorizontalStroke()
                 )
             } else {
@@ -263,9 +264,9 @@ fun CompareScreen(
             }
 
             AnimatedContent(viewModel.bitmapData == null) { nil ->
-                viewModel.bitmapData.takeIf { !nil }?.let {
+                viewModel.bitmapData.takeIf { !nil }?.let { bitmapPair ->
                     if (portrait) {
-                        AnimatedContent(targetState = it) { data ->
+                        AnimatedContent(targetState = bitmapPair) { data ->
                             data.let { (b, a) ->
                                 val before = remember(data) { b?.asImageBitmap() }
                                 val after = remember(data) { a?.asImageBitmap() }
@@ -290,8 +291,7 @@ fun CompareScreen(
                                 }
                             }
                         }
-                    }
-                    else {
+                    } else {
                         Row {
                             Box(
                                 Modifier
@@ -299,7 +299,7 @@ fun CompareScreen(
                                     .padding(20.dp)
                             ) {
                                 Box(Modifier.align(Alignment.Center)) {
-                                    AnimatedContent(targetState = it) { data ->
+                                    AnimatedContent(targetState = bitmapPair) { data ->
                                         data.let { (b, a) ->
                                             val before = remember(data) { b?.asImageBitmap() }
                                             val after = remember(data) { a?.asImageBitmap() }
@@ -328,8 +328,8 @@ fun CompareScreen(
                             Box(
                                 Modifier
                                     .fillMaxHeight()
-                                    .width(LocalBorderWidth.current.coerceAtLeast(0.25.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .width(settingsState.borderWidth.coerceAtLeast(0.25.dp))
+                                    .background(MaterialTheme.colorScheme.outlineVariant())
                             )
                             Column(
                                 Modifier
@@ -365,7 +365,7 @@ fun CompareScreen(
                                         CircleShape
                                     )
                                     .border(
-                                        LocalBorderWidth.current,
+                                        settingsState.borderWidth,
                                         MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer),
                                         CircleShape
                                     )
@@ -414,7 +414,7 @@ fun CompareScreen(
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .align(LocalAlignment.current)
+                    .align(settingsState.fabAlignment)
                     .fabBorder(),
                 elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                 icon = {
@@ -445,13 +445,13 @@ fun CompareScreen(
                             .weight(100f, true)
                             .offset(y = (-2).dp)
                             .background(
-                                MaterialTheme.colorScheme.secondaryContainer,
-                                CircleShape
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = CircleShape
                             )
                             .border(
-                                LocalBorderWidth.current,
-                                MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer),
-                                CircleShape
+                                width = settingsState.borderWidth,
+                                color = MaterialTheme.colorScheme.outlineVariant(onTopOf = MaterialTheme.colorScheme.secondaryContainer),
+                                shape = CircleShape
                             )
                             .padding(horizontal = 16.dp),
                         colors = SliderDefaults.colors(

@@ -6,9 +6,6 @@ import android.content.Context
 import android.content.res.Configuration
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -39,10 +36,8 @@ import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Colorize
 import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -81,67 +76,67 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.size.Size
 import com.smarttoolfactory.colordetector.ImageColorDetector
 import com.t8rin.dynamic.theme.LocalDynamicThemeState
-import dev.olshevski.navigation.reimagined.NavController
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
 import kotlinx.coroutines.launch
 import ru.tech.imageresizershrinker.R
-import ru.tech.imageresizershrinker.main_screen.components.LocalAlignment
-import ru.tech.imageresizershrinker.main_screen.components.LocalAllowChangeColorByImage
-import ru.tech.imageresizershrinker.main_screen.components.LocalBorderWidth
-import ru.tech.imageresizershrinker.main_screen.components.Screen
 import ru.tech.imageresizershrinker.pick_color_from_image_screen.viewModel.PickColorViewModel
-import ru.tech.imageresizershrinker.resize_screen.components.ImageNotPickedWidget
-import ru.tech.imageresizershrinker.resize_screen.components.LoadingDialog
-import ru.tech.imageresizershrinker.theme.PaletteSwatch
+import ru.tech.imageresizershrinker.theme.icons.PaletteSwatch
 import ru.tech.imageresizershrinker.theme.outlineVariant
-import ru.tech.imageresizershrinker.utils.BitmapUtils.decodeBitmapFromUri
-import ru.tech.imageresizershrinker.utils.LocalWindowSizeClass
+import ru.tech.imageresizershrinker.utils.coil.filters.SaturationFilter
+import ru.tech.imageresizershrinker.utils.helper.BitmapUtils.decodeBitmapByUri
 import ru.tech.imageresizershrinker.utils.modifier.block
 import ru.tech.imageresizershrinker.utils.modifier.drawHorizontalStroke
 import ru.tech.imageresizershrinker.utils.modifier.fabBorder
 import ru.tech.imageresizershrinker.utils.modifier.navBarsPaddingOnlyIfTheyAtTheBottom
 import ru.tech.imageresizershrinker.utils.modifier.navBarsPaddingOnlyIfTheyAtTheEnd
-import ru.tech.imageresizershrinker.widget.LocalToastHost
-import ru.tech.imageresizershrinker.widget.Marquee
+import ru.tech.imageresizershrinker.utils.navigation.LocalNavController
+import ru.tech.imageresizershrinker.utils.navigation.Screen
+import ru.tech.imageresizershrinker.utils.storage.Picker
+import ru.tech.imageresizershrinker.utils.storage.localImagePickerMode
+import ru.tech.imageresizershrinker.utils.storage.rememberImagePicker
+import ru.tech.imageresizershrinker.widget.other.LoadingDialog
+import ru.tech.imageresizershrinker.widget.other.LocalToastHost
+import ru.tech.imageresizershrinker.widget.other.TopAppBarEmoji
+import ru.tech.imageresizershrinker.widget.image.ImageNotPickedWidget
+import ru.tech.imageresizershrinker.widget.other.showError
+import ru.tech.imageresizershrinker.widget.text.Marquee
+import ru.tech.imageresizershrinker.widget.utils.LocalSettingsState
+import ru.tech.imageresizershrinker.widget.utils.LocalWindowSizeClass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PickColorFromImageScreen(
     uriState: Uri?,
-    navController: NavController<Screen>,
     onGoBack: () -> Unit,
-    pushNewUri: (Uri?) -> Unit,
     viewModel: PickColorViewModel = viewModel()
 ) {
+    val settingsState = LocalSettingsState.current
+    val navController = LocalNavController.current
     val context = LocalContext.current
     val toastHostState = LocalToastHost.current
-    val scope = rememberCoroutineScope()
     val themeState = LocalDynamicThemeState.current
-    val allowChangeColor = LocalAllowChangeColorByImage.current
+    val allowChangeColor = settingsState.allowChangeColorByImage
+
+    val scope = rememberCoroutineScope()
 
     var canZoom by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uriState) {
         uriState?.let {
             viewModel.setUri(it)
-            pushNewUri(null)
-            context.decodeBitmapFromUri(
+            context.decodeBitmapByUri(
                 uri = it,
+                originalSize = false,
                 onGetMimeType = {},
                 onGetExif = {},
                 onGetBitmap = viewModel::updateBitmap,
                 onError = {
                     scope.launch {
-                        toastHostState.showToast(
-                            context.getString(
-                                R.string.smth_went_wrong,
-                                it.localizedMessage ?: ""
-                            ),
-                            Icons.Rounded.ErrorOutline
-                        )
+                        toastHostState.showError(context, it)
                     }
                 }
             )
@@ -150,7 +145,11 @@ fun PickColorFromImageScreen(
 
     LaunchedEffect(viewModel.bitmap) {
         viewModel.bitmap?.let {
-            if (allowChangeColor) themeState.updateColorByImage(it)
+            if (allowChangeColor) {
+                themeState.updateColorByImage(
+                    SaturationFilter(context, 2f).transform(it, Size.ORIGINAL)
+                )
+            }
         }
     }
 
@@ -161,25 +160,20 @@ fun PickColorFromImageScreen(
     }
 
     val pickImageLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.PickVisualMedia()
-        ) { uri ->
-            uri?.let {
+        rememberImagePicker(
+            mode = localImagePickerMode(Picker.Single)
+        ) { uris ->
+            uris.takeIf { it.isNotEmpty() }?.firstOrNull()?.let {
                 viewModel.setUri(it)
-                context.decodeBitmapFromUri(
+                context.decodeBitmapByUri(
                     uri = it,
+                    originalSize = false,
                     onGetMimeType = {},
                     onGetExif = {},
                     onGetBitmap = viewModel::updateBitmap,
                     onError = {
                         scope.launch {
-                            toastHostState.showToast(
-                                context.getString(
-                                    R.string.smth_went_wrong,
-                                    it.localizedMessage ?: ""
-                                ),
-                                Icons.Rounded.ErrorOutline
-                            )
+                            toastHostState.showError(context, it)
                         }
                     }
                 )
@@ -187,9 +181,7 @@ fun PickColorFromImageScreen(
         }
 
     val pickImage = {
-        pickImageLauncher.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-        )
+        pickImageLauncher.pickImage()
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -229,6 +221,7 @@ fun PickColorFromImageScreen(
         val color = viewModel.color
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             AnimatedContent(
+                modifier = Modifier.drawHorizontalStroke(),
                 targetState = viewModel.bitmap == null,
                 transitionSpec = { fadeIn() togetherWith fadeOut() }
             ) { noBmp ->
@@ -254,7 +247,11 @@ fun PickColorFromImageScreen(
                         colors = TopAppBarDefaults.mediumTopAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                         ),
-                        modifier = Modifier.drawHorizontalStroke()
+                        actions = {
+                            if (viewModel.bitmap == null) {
+                                TopAppBarEmoji()
+                            }
+                        }
                     )
                 } else {
                     Surface(
@@ -310,7 +307,7 @@ fun PickColorFromImageScreen(
                                                         }
                                                         .background(MaterialTheme.colorScheme.secondaryContainer)
                                                         .border(
-                                                            LocalBorderWidth.current,
+                                                            settingsState.borderWidth,
                                                             MaterialTheme.colorScheme.outlineVariant(
                                                                 onTopOf = MaterialTheme.colorScheme.secondaryContainer
                                                             ),
@@ -343,7 +340,7 @@ fun PickColorFromImageScreen(
                                                         .height(40.dp)
                                                         .width(72.dp)
                                                         .border(
-                                                            width = LocalBorderWidth.current,
+                                                            width = settingsState.borderWidth,
                                                             color = MaterialTheme.colorScheme.outlineVariant(
                                                                 onTopOf = animateColorAsState(color).value
                                                             ),
@@ -368,8 +365,11 @@ fun PickColorFromImageScreen(
                                                     IconButton(
                                                         onClick = {
                                                             if (navController.backstack.entries.isNotEmpty()) navController.pop()
-                                                            navController.navigate(Screen.GeneratePalette)
-                                                            pushNewUri(viewModel.uri)
+                                                            navController.navigate(
+                                                                Screen.GeneratePalette(
+                                                                    viewModel.uri
+                                                                )
+                                                            )
                                                         },
                                                         modifier = Modifier.statusBarsPadding()
                                                     ) {
@@ -388,8 +388,11 @@ fun PickColorFromImageScreen(
                                         IconButton(
                                             onClick = {
                                                 if (navController.backstack.entries.isNotEmpty()) navController.pop()
-                                                navController.navigate(Screen.GeneratePalette)
-                                                pushNewUri(viewModel.uri)
+                                                navController.navigate(
+                                                    Screen.GeneratePalette(
+                                                        viewModel.uri
+                                                    )
+                                                )
                                             },
                                             modifier = Modifier.statusBarsPadding()
                                         ) {
@@ -429,7 +432,7 @@ fun PickColorFromImageScreen(
                                                     }
                                                     .background(MaterialTheme.colorScheme.secondaryContainer)
                                                     .border(
-                                                        LocalBorderWidth.current,
+                                                        settingsState.borderWidth,
                                                         MaterialTheme.colorScheme.outlineVariant(
                                                             onTopOf = MaterialTheme.colorScheme.secondaryContainer
                                                         ),
@@ -459,7 +462,7 @@ fun PickColorFromImageScreen(
                                                     .height(40.dp)
                                                     .width(72.dp)
                                                     .border(
-                                                        width = LocalBorderWidth.current,
+                                                        width = settingsState.borderWidth,
                                                         color = MaterialTheme.colorScheme.outlineVariant(
                                                             onTopOf = animateColorAsState(color).value
                                                         ),
@@ -485,10 +488,6 @@ fun PickColorFromImageScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
-                            Divider(
-                                color = MaterialTheme.colorScheme.outlineVariant(0.3f),
-                                thickness = LocalBorderWidth.current
-                            )
                         }
                     }
                 }
@@ -531,6 +530,7 @@ fun PickColorFromImageScreen(
                                             imageBitmap = bitmap.asImageBitmap(),
                                             color = viewModel.color,
                                             modifier = Modifier
+                                                .fillMaxSize()
                                                 .navBarsPaddingOnlyIfTheyAtTheBottom()
                                                 .block(RoundedCornerShape(4.dp))
                                                 .padding(4.dp)
@@ -543,8 +543,8 @@ fun PickColorFromImageScreen(
                             Box(
                                 Modifier
                                     .fillMaxHeight()
-                                    .width(LocalBorderWidth.current.coerceAtLeast(0.25.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .width(settingsState.borderWidth.coerceAtLeast(0.25.dp))
+                                    .background(MaterialTheme.colorScheme.outlineVariant())
                             )
                             Column(
                                 Modifier
@@ -601,7 +601,7 @@ fun PickColorFromImageScreen(
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .align(LocalAlignment.current)
+                    .align(settingsState.fabAlignment)
                     .fabBorder(),
                 elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
                 text = {
