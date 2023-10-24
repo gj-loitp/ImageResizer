@@ -1,0 +1,25 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml:2:1-41
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml:2:1-41
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml:2:1-41
+	package
+		ADDED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml:2:11-38
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml:2:1-41
+uses-sdk
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+		ADDED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+		ADDED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
+		INJECTED from /Users/loitran/AndroidStudioProjects/@clone/ImageResizer/drawbox/src/main/AndroidManifest.xml
