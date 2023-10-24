@@ -20,9 +20,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
+import com.smarttoolfactory.colordetector.model.ColorData
+import com.smarttoolfactory.colordetector.parser.rememberColorParser
 import com.smarttoolfactory.colordetector.util.ColorUtil
 import com.smarttoolfactory.colordetector.util.ColorUtil.fractionToIntPercent
 
@@ -38,12 +41,14 @@ import com.smarttoolfactory.colordetector.util.ColorUtil.fractionToIntPercent
 fun ImageColorPalette(
     modifier: Modifier = Modifier,
     imageBitmap: ImageBitmap,
+    style: TextStyle,
     maximumColorCount: Int = 32,
     borderWidth: Dp,
     onEmpty: @Composable ColumnScope.() -> Unit,
     onColorChange: (ColorData) -> Unit
 ) {
-    val paletteData: List<PaletteData> by remember(imageBitmap) {
+    val parser = rememberColorParser()
+    val paletteData: List<PaletteData> by remember(imageBitmap, maximumColorCount) {
         derivedStateOf {
             val paletteData = mutableListOf<PaletteData>()
             val palette = Palette
@@ -59,16 +64,18 @@ fun ImageColorPalette(
             palette.swatches.forEach { paletteSwatch ->
                 paletteSwatch?.let { swatch ->
                     val color = Color(swatch.rgb)
-                    val name = ""
+                    val name = parser.parseColorName(color)
                     val colorData = ColorData(color, name)
                     val percent: Float = swatch.population / numberOfPixels
                     paletteData.add(PaletteData(colorData = colorData, percent))
                 }
             }
-            paletteData.sortedWith(
+            paletteData.distinctBy {
+                it.colorData.name
+            }.sortedWith(
                 compareBy(
-                    { ColorUtil.colorToHSV(it.colorData.color)[0] },
                     { it.colorData.color.luminance() },
+                    { ColorUtil.colorToHSV(it.colorData.color)[0] },
                 )
             )
         }
@@ -79,21 +86,22 @@ fun ImageColorPalette(
         paletteDataList = paletteData,
         onColorChange = onColorChange,
         onEmpty = onEmpty,
-        borderWidth = borderWidth
+        borderWidth = borderWidth,
+        style = style
     )
 }
 
 @Composable
 private fun ColorProfileList(
     modifier: Modifier,
+    style: TextStyle,
     borderWidth: Dp,
     paletteDataList: List<PaletteData>,
     onEmpty: @Composable ColumnScope.() -> Unit,
     onColorChange: (ColorData) -> Unit
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         paletteDataList.forEach { paletteData: PaletteData ->
@@ -101,16 +109,16 @@ private fun ColorProfileList(
             val colorData = paletteData.colorData
 
             ColorItemRow(
+                style = style,
                 modifier = Modifier
-                    .border(
-                        width = borderWidth,
-                        shape = RoundedCornerShape(50),
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
                     .then(
-                        if (borderWidth < 0.dp) {
-                            Modifier.shadow(.5.dp, RoundedCornerShape(50))
-                        } else Modifier
+                        if (borderWidth > 0.dp) {
+                            Modifier.border(
+                                width = borderWidth,
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                        } else Modifier.shadow(1.dp, RoundedCornerShape(50))
                     )
                     .background(
                         MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp),
@@ -118,6 +126,13 @@ private fun ColorProfileList(
                     )
                     .fillMaxWidth(),
                 colorData = colorData,
+                colorModifier = if (borderWidth > 0.dp) {
+                    Modifier.border(
+                        width = borderWidth,
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                } else Modifier.shadow(1.dp, RoundedCornerShape(50)),
                 populationPercent = "$percent%",
                 onClick = onColorChange,
                 contentColor = MaterialTheme.colorScheme.onSurface

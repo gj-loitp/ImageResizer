@@ -7,15 +7,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.DefaultAlpha
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -23,7 +35,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.core.graphics.BitmapCompat
 import com.smarttoolfactory.beforeafter.util.getParentSize
 import com.smarttoolfactory.beforeafter.util.getScaledBitmapRect
 import com.smarttoolfactory.beforeafter.util.scale
@@ -31,6 +48,7 @@ import com.smarttoolfactory.beforeafter.util.update
 import com.smarttoolfactory.gesture.detectMotionEvents
 import com.smarttoolfactory.gesture.detectTransformGestures
 import kotlinx.coroutines.launch
+import kotlin.math.max
 
 /**
  * A composable that lays out and draws a given [beforeImage] and [afterImage]
@@ -159,7 +177,7 @@ internal fun BeforeAfterImageImpl(
 
         var isHandleTouched by remember { mutableStateOf(false) }
 
-        val zoomState = rememberZoomState(limitPan = true)
+        val zoomState = rememberZoomState(limitPan = true, maxZoom = 30f)
         val coroutineScope = rememberCoroutineScope()
 
         val transformModifier = Modifier.pointerInput(Unit) {
@@ -331,6 +349,8 @@ private fun ImageImpl(
 
     Box {
 
+        val afterImageImpl = afterImage.scaleTo(beforeImage)
+
         Canvas(modifier = modifier) {
 
             val canvasWidth = size.width
@@ -370,7 +390,7 @@ private fun ImageImpl(
                         filterQuality = filterQuality
                     )
                     drawImage(
-                        afterImage,
+                        afterImageImpl,
                         srcSize = IntSize(bitmapWidth, bitmapHeight),
                         srcOffset = IntOffset(srcOffsetX, 0),
                         dstSize = IntSize(width, height),
@@ -410,4 +430,25 @@ private fun ImageImpl(
             afterLabel()
         }
     }
+}
+
+@Composable
+private fun ImageBitmap.scaleTo(
+    beforeImage: ImageBitmap
+): ImageBitmap = remember(this, beforeImage) {
+    val widthInternal = beforeImage.width
+    val heightInternal = beforeImage.height
+
+    val max = max(widthInternal, heightInternal)
+    kotlin.runCatching {
+        if (this.height >= this.width) {
+            val aspectRatio = this.width.toDouble() / this.height.toDouble()
+            val targetWidth = (max * aspectRatio).toInt()
+            BitmapCompat.createScaledBitmap(this.asAndroidBitmap(), targetWidth, max, null, false)
+        } else {
+            val aspectRatio = this.height.toDouble() / this.width.toDouble()
+            val targetHeight = (max * aspectRatio).toInt()
+            BitmapCompat.createScaledBitmap(this.asAndroidBitmap(), max, targetHeight, null, false)
+        }
+    }.getOrNull()?.asImageBitmap() ?: this
 }

@@ -1,3 +1,8 @@
+@file:Suppress("UnstableApiUsage")
+
+include(":jxlcoder-coil")
+
+
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -14,7 +19,7 @@ dependencyResolutionManagement {
         maven { setUrl("https://jitpack.io") }
     }
 }
-rootProject.name = "Image Resizer"
+rootProject.name = "Image Toolbox"
 include(":app")
 include(":cropper")
 include(":dynamic_theme")
@@ -25,4 +30,6 @@ include(":image")
 include(":screenshot")
 include(":modalsheet")
 include(":gpuimage")
-include(":drawbox")
+include(":colorpicker")
+include(":systemuicontroller")
+include(":placeholder")

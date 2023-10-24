@@ -1,7 +1,6 @@
 package com.smarttoolfactory.colordetector
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.smarttoolfactory.colordetector.model.ColorData
 
 @Composable
 internal fun ColorItemRow(
@@ -28,6 +30,8 @@ internal fun ColorItemRow(
     contentColor: Color = Color.Unspecified,
     containerColor: Color = Color.Unspecified,
     populationPercent: String,
+    style: TextStyle,
+    colorModifier: Modifier = Modifier,
     colorData: ColorData,
     onClick: (ColorData) -> Unit,
 ) {
@@ -43,33 +47,32 @@ internal fun ColorItemRow(
     ) {
         Box(
             modifier = Modifier
+                .then(colorModifier)
                 .size(38.dp)
                 .background(colorData.color, shape = CircleShape)
-                .border(
-                    1.dp,
-                    androidx.compose.material3.MaterialTheme.colorScheme.outline,
-                    CircleShape
-                )
         )
 
-        Spacer(modifier = Modifier.width(20.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Column(
             modifier = Modifier.fillMaxHeight(),
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             Text(
-                text = colorData.hexText.uppercase(),
-                fontSize = 16.sp,
-                color = contentColor
+                text = colorData.name,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = contentColor,
+                style = style
             )
         }
 
         Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = populationPercent,
+            text = colorData.hexText.uppercase(),
+            style = style,
             fontSize = 16.sp,
-            color = contentColor
+            color = contentColor,
         )
     }
 }

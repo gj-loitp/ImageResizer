@@ -12,7 +12,6 @@
     <string name="resize_type">Tamaina-aldaketaren mota</string>
     <string name="flexible">Malgua</string>
     <string name="explicit">Esplizitua</string>
-    <string name="saved_to">%1$s karpetan gorde da</string>
     <string name="pick_image_alt">Aukeratu Irudia</string>
     <string name="app_closing">Aplikazioa ixten</string>
     <string name="stay">Geratu</string>
@@ -30,7 +29,6 @@
     <string name="edit_exif">Editatu EXIF</string>
     <string name="no_exif">EXIF daturik ez da aurkitu</string>
     <string name="add_tag">Gehitu etiketa</string>
-    <string name="might_be_error_with_exif">Ez bada JPEG konpresio-formatua aukeratzen, orduan, EXIF metadatuak oker ager daitezke beste aplikazioetan</string>
     <string name="save">Gorde</string>
     <string name="clear_exif">Ezabatu EXIF</string>
     <string name="cancel">Utzi</string>
@@ -39,12 +37,12 @@
     <string name="image_not_saved">Gordetzen</string>
     <string name="image_not_saved_sub">Gorde ez diren aldaketa guztiak galduko dira orain irteten bazara</string>
     <string name="check_source_code_sub">Jaso azken eguneraketak, eztabaidatu arazoak eta gehiago</string>
-    <string name="single_resize">Tamaina-aldaketa bakarra</string>
+    <string name="single_edit">Tamaina-aldaketa bakarra</string>
     <string name="presets">Aurredoikuntzak</string>
     <string name="ratio">Ratioa</string>
     <string name="check_source_code">Iturburu-kodea</string>
     <string name="crop">Moztu</string>
-    <string name="resize_single_image">Aldatu emandako irudi bakarraren zehaztapenak</string>
+    <string name="single_edit_sub">Aldatu emandako irudi bakarraren zehaztapenak</string>
     <string name="pick_color">Aukeratu kolorea</string>
     <string name="pick_color_sub">Aukeratu kolorea iruditik, kopiatu edo partekatu</string>
     <string name="image">Irudia</string>
@@ -52,8 +50,6 @@
     <string name="color_copied">Kolorea kopiatu da</string>
     <string name="crop_sub">Moztu irudia edozein mugatara</string>
     <string name="version">Bertsioa</string>
-    <string name="resize_batch_image">Aldatu emandako irudi sorten zehaztapenak</string>
-    <string name="batch_resize">Lotearen tamaina aldatzea</string>
     <string name="change_preview">Aldatu aurrebista</string>
     <string name="update">Eguneratu</string>
     <string name="no_palette">Ezin da paleta sortu emandako irudiarentzat</string>
@@ -115,13 +111,11 @@
     <string name="search_here">Bilatu hemen</string>
     <string name="dynamic_colors_sub">Gaituta badago, aplikazioaren koloreak hartuko dira horma-paperen koloreetarako</string>
     <string name="failed_to_save">Ezin izan dira gorde %d irudiak</string>
-    <string name="png_warning_bytes">PNG moduan gordetzea ezegonkorra izan daiteke, galerarik gabeko formatua delako</string>
     <string name="primary">Lehen mailakoa</string>
     <string name="border_thickness">Ertzaren lodiera</string>
     <string name="permission_sub">Aplikazioak zure biltegiratze sarbidea behar du irudiak gordetzeko, beharrezkoa da, hori gabe ezin du funtzionatu, beraz, eman baimena hurrengo elkarrizketa-koadroan</string>
     <string name="grant_permission_manual">Aplikazioak funtziona dezan baimen hau behar du, mesedez, baimendu eskuz</string>
-    <string name="buy_me_a_coffee">Erosi niri kafe bat</string>
-    <string name="buy_me_a_coffee_sub">Aplikazio hau guztiz doakoa da, baina proiektuaren garapenean lagundu nahi baduzu, hemen klik egin dezakezu</string>
+    <string name="donation_sub">Aplikazio hau guztiz doakoa da, baina proiektuaren garapenean lagundu nahi baduzu, hemen klik egin dezakezu</string>
     <string name="fab_alignment">FAB lerrokatzea</string>
     <string name="check_updates">Egiaztatu eguneratzeak</string>
     <string name="check_updates_sub">Gaituta badago, eguneratzeko elkarrizketa-koadroa erakutsiko zaizu aplikazioa abiarazi ondoren</string>
@@ -139,7 +133,6 @@
     <string name="line_width">Lerroaren zabalera</string>
     <string name="laplacian">Laplazianoa</string>
     <string name="vignette">Viñeta</string>
-    <string name="coming_soon">Laister</string>
     <string name="radius">Erradioa</string>
     <string name="scale">Eskala</string>
     <string name="order_sub">Pantaila nagusiko aukeren ordena zehazten du</string>
@@ -240,7 +233,6 @@
     <string name="color_balance">Koloreen oreka</string>
     <string name="delete_exif">Ezabatu EXIF</string>
     <string name="image_preview_sub">Aurreikusi edozein motatako irudiak: GIF, SVG eta abar</string>
-    <string name="cropping">Mozketa</string>
     <string name="image_source">Irudiaren iturria</string>
     <string name="photo_picker">Argazki-hautatzailea</string>
     <string name="gallery_picker">Galeria</string>
@@ -295,4 +287,11 @@
 \nKontuan izan: memoria ez da biltegiratzea.</string>
     <string name="compatibility_sub">Kontuan izan fitxategiak enkriptatzeko beste software edo zerbitzu batzuekin bateragarritasuna ez dagoela bermatuta. Gako-tratamendu edo zifratze-konfigurazio apur bat desberdina bateraezintasunaren arrazoia izan daiteke.</string>
     <string name="features_sub">Fitxategien pasahitzetan oinarritutako enkriptatzea. Jarraitutako fitxategiak hautatutako direktorioan gorde edo partekatu daitezke. Deszifratutako fitxategiak ere zuzenean ireki daitezke.</string>
+    <string name="fallback_option">Atzerako aukera</string>
+    <string name="secondary_customization">Bigarren mailako pertsonalizazioa</string>
+    <string name="warning_bytes">%1$s moduan gordetzea ezegonkorra izan daiteke, galerarik gabeko formatua delako</string>
+    <string name="screenshot">Pantaila-argazkia</string>
+    <string name="skip">Saltatu</string>
+    <string name="copy">Kopiatu</string>
+    <string name="edit_screenshot">Editatu pantaila-argazkia</string>
 </resources>

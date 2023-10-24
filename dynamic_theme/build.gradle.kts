@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -5,14 +7,11 @@ plugins {
 
 android {
     namespace = "com.cookhelper.dynamic.theme"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 33
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
+        targetSdk = 34
     }
 
     buildTypes {
@@ -36,15 +35,16 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.7"
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2023.05.01"))
-    implementation("androidx.core:core-ktx:1.10.1")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.palette:palette:1.0.0")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.compose.material3:material3:1.2.0-alpha10")
+    implementation("androidx.palette:palette-ktx:1.0.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+    implementation("androidx.compose.ui:ui-text:1.6.0-alpha08")
+
+    implementation(project(":systemuicontroller"))
 }

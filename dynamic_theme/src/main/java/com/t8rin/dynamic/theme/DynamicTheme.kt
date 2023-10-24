@@ -1,9 +1,14 @@
 package com.t8rin.dynamic.theme
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.WallpaperManager
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.annotation.FloatRange
@@ -65,6 +70,10 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.t8rin.dynamic.theme.hct.Hct
 import com.t8rin.dynamic.theme.palettes.TonalPalette
 import com.t8rin.dynamic.theme.scheme.Scheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * DynamicTheme allows you to dynamically change the color scheme of the content hierarchy.
@@ -109,15 +118,15 @@ fun DynamicTheme(
         colorTuple = state.colorTuple.value
     ).animateAllColors(tween(150))
 
-    MaterialTheme(
-        typography = typography,
-        colorScheme = scheme,
+    CompositionLocalProvider(
+        values = arrayOf(
+            LocalDynamicThemeState provides state,
+            LocalDensity provides density
+        ),
         content = {
-            CompositionLocalProvider(
-                values = arrayOf(
-                    LocalDynamicThemeState provides state,
-                    LocalDensity provides density
-                ),
+            MaterialTheme(
+                typography = typography,
+                colorScheme = scheme,
                 content = content
             )
         }
@@ -239,6 +248,7 @@ fun Color.calculateSurfaceColor(): Int {
 }
 
 
+@SuppressLint("MissingPermission")
 @Composable
 fun getAppColorTuple(
     defaultColorTuple: ColorTuple,
@@ -325,7 +335,7 @@ fun Lifecycle.observeAsState(): State<Lifecycle.Event> {
  * @return [ColorScheme] with animated colors.
  */
 @Composable
-private fun ColorScheme.animateAllColors(animationSpec: AnimationSpec<Color>): ColorScheme {
+fun ColorScheme.animateAllColors(animationSpec: AnimationSpec<Color>): ColorScheme {
 
     /**
      * Wraps color into [animateColorAsState].
@@ -366,7 +376,6 @@ private fun ColorScheme.animateAllColors(animationSpec: AnimationSpec<Color>): C
     )
 }
 
-
 fun Bitmap.extractPrimaryColor(default: Int = 0, blendWithVibrant: Boolean = true): Color {
     fun Int.blend(
         color: Int,
@@ -395,7 +404,10 @@ data class ColorTuple(
     val secondary: Color? = null,
     val tertiary: Color? = null,
     val surface: Color? = null
-)
+) {
+    override fun toString(): String =
+        "ColorTuple(primary=${primary.toArgb()}, secondary=${secondary?.toArgb()}, tertiary=${tertiary?.toArgb()}, surface=${surface?.toArgb()})"
+}
 
 /**
  * Creates and remember [DynamicThemeState] instance
@@ -447,7 +459,24 @@ class DynamicThemeState(
     }
 
     fun updateColorByImage(bitmap: Bitmap) {
-        updateColor(bitmap.extractPrimaryColor())
+        CoroutineScope(Dispatchers.Main).launch {
+            updateColor(bitmap.saturate(2f).extractPrimaryColor())
+        }
+    }
+
+    private suspend fun Bitmap.saturate(saturation: Float): Bitmap = withContext(Dispatchers.IO) {
+        val src = this@saturate
+        val w = src.width
+        val h = src.height
+        val bitmapResult = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvasResult = Canvas(bitmapResult)
+        val paint = Paint()
+        val colorMatrix = ColorMatrix()
+        colorMatrix.setSaturation(saturation)
+        val filter = ColorMatrixColorFilter(colorMatrix)
+        paint.setColorFilter(filter)
+        canvasResult.drawBitmap(src, 0f, 0f, paint)
+        return@withContext bitmapResult
     }
 }
 
@@ -546,6 +575,14 @@ private fun Scheme.toDarkThemeColorScheme(
         errorContainer = Color(errorContainer),
         onErrorContainer = Color(onErrorContainer),
         scrim = Color(scrim),
+        surfaceBright = Color(n1.tone(24)),
+        surfaceContainer = Color(n1.tone(12)),
+        surfaceContainerHigh = Color(n1.tone(17)),
+        surfaceContainerHighest = Color(n1.tone(22)),
+        surfaceContainerLow = Color(n1.tone(10)),
+        surfaceContainerLowest = Color(n1.tone(4)),
+        surfaceDim = Color(n1.tone(6)),
+        surfaceTint = Color(primary)
     )
 }
 
@@ -605,12 +642,19 @@ private fun Scheme.toLightThemeColorScheme(
         outlineVariant = Color(n2.tone(80)),
         inverseSurface = Color(n1.tone(20)),
         inverseOnSurface = Color(n1.tone(95)),
-        surfaceTint = Color(primary),
         error = Color(error),
         onError = Color(onError),
         errorContainer = Color(errorContainer),
         onErrorContainer = Color(onErrorContainer),
         scrim = Color(scrim),
+        surfaceBright = Color(n1.tone(98)),
+        surfaceContainer = Color(n1.tone(94)),
+        surfaceContainerHigh = Color(n1.tone(92)),
+        surfaceContainerHighest = Color(n1.tone(90)),
+        surfaceContainerLow = Color(n1.tone(96)),
+        surfaceContainerLowest = Color(n1.tone(100)),
+        surfaceDim = Color(n1.tone(87)),
+        surfaceTint = Color(primary)
     )
 }
 

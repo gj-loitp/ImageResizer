@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -5,17 +7,14 @@ plugins {
 
 
 android {
-    compileSdk = 33
+    compileSdk = 34
 
     namespace = "jp.co.cyberagent.android.gpuimage"
     defaultConfig {
         minSdk = 21
-        targetSdk = 33
+        targetSdk = 34
 
         ndk.abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
-        externalNativeBuild {
-            cmake { cppFlags("") }
-        }
     }
     externalNativeBuild {
         cmake { path("src/main/cpp/CMakeLists.txt") }
@@ -28,5 +27,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 }
